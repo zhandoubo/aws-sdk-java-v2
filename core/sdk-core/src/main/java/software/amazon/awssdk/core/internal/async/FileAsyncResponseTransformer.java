@@ -32,6 +32,7 @@ import org.reactivestreams.Subscription;
 import software.amazon.awssdk.annotations.SdkInternalApi;
 import software.amazon.awssdk.core.async.AsyncResponseTransformer;
 import software.amazon.awssdk.core.async.SdkPublisher;
+import software.amazon.awssdk.utils.Validate;
 
 /**
  * {@link AsyncResponseTransformer} that writes the data to the specified file.
@@ -41,16 +42,29 @@ import software.amazon.awssdk.core.async.SdkPublisher;
 @SdkInternalApi
 public final class FileAsyncResponseTransformer<ResponseT> implements AsyncResponseTransformer<ResponseT, ResponseT> {
     private final Path path;
+    private final long offset;
+    private final boolean isNewFile;
+    private final boolean deleteOnFailure;
     private volatile AsynchronousFileChannel fileChannel;
     private volatile CompletableFuture<Void> cf;
     private volatile ResponseT response;
 
     public FileAsyncResponseTransformer(Path path) {
+        this(path, 0L, true, true);
+    }
+
+    public FileAsyncResponseTransformer(Path path, long offset, boolean isNewFile, boolean deleteOnFailure) {
         this.path = path;
+        this.offset = Validate.isNotNegative(offset, "offset");
+        this.isNewFile = isNewFile;
+        this.deleteOnFailure = deleteOnFailure;
     }
 
     private AsynchronousFileChannel createChannel(Path path) throws IOException {
-        return AsynchronousFileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW);
+        if (isNewFile) {
+            return AsynchronousFileChannel.open(path, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+        }
+        return AsynchronousFileChannel.open(path, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
     }
 
     @Override
@@ -73,7 +87,7 @@ public final class FileAsyncResponseTransformer<ResponseT> implements AsyncRespo
     public void onStream(SdkPublisher<ByteBuffer> publisher) {
         // onStream may be called multiple times so reset the file channel every time
         this.fileChannel = invokeSafely(() -> createChannel(path));
-        publisher.subscribe(new FileSubscriber(this.fileChannel, path, cf, this::exceptionOccurred));
+        publisher.subscribe(new FileSubscriber(offset, this.fileChannel, path, cf, this::exceptionOccurred));
     }
 
     @Override
@@ -83,7 +97,9 @@ public final class FileAsyncResponseTransformer<ResponseT> implements AsyncRespo
                 invokeSafely(fileChannel::close);
             }
         } finally {
-            invokeSafely(() -> Files.deleteIfExists(path));
+            if (deleteOnFailure) {
+                invokeSafely(() -> Files.deleteIfExists(path));
+            }
         }
         cf.completeExceptionally(throwable);
     }
@@ -92,7 +108,7 @@ public final class FileAsyncResponseTransformer<ResponseT> implements AsyncRespo
      * {@link Subscriber} implementation that writes chunks to a file.
      */
     static class FileSubscriber implements Subscriber<ByteBuffer> {
-        private final AtomicLong position = new AtomicLong();
+        private final AtomicLong position;
 
         private final AsynchronousFileChannel fileChannel;
         private final Path path;
@@ -103,12 +119,18 @@ public final class FileAsyncResponseTransformer<ResponseT> implements AsyncRespo
         private volatile boolean closeOnLastWrite = false;
         private Subscription subscription;
 
-        FileSubscriber(AsynchronousFileChannel fileChannel, Path path, CompletableFuture<Void> future,
+        FileSubscriber(long position, AsynchronousFileChannel fileChannel, Path path, CompletableFuture<Void> future,
                        Consumer<Throwable> onErrorMethod) {
+            this.position = new AtomicLong(position);
             this.fileChannel = fileChannel;
             this.path = path;
             this.future = future;
             this.onErrorMethod = onErrorMethod;
+        }
+
+        FileSubscriber(AsynchronousFileChannel fileChannel, Path path, CompletableFuture<Void> future,
+                       Consumer<Throwable> onErrorMethod) {
+            this(0, fileChannel, path, future, onErrorMethod);
         }
 
         @Override
