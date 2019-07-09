@@ -17,7 +17,7 @@ package software.amazon.awssdk.enhanced.dynamodb.internal.model;
 
 import software.amazon.awssdk.annotations.SdkInternalApi;
 import software.amazon.awssdk.annotations.ThreadSafe;
-import software.amazon.awssdk.enhanced.dynamodb.model.ConvertableItemAttributeValue;
+import software.amazon.awssdk.enhanced.dynamodb.model.ConvertibleItemAttributeValue;
 import software.amazon.awssdk.enhanced.dynamodb.model.ResponseItem;
 
 /**
@@ -25,7 +25,7 @@ import software.amazon.awssdk.enhanced.dynamodb.model.ResponseItem;
  */
 @SdkInternalApi
 @ThreadSafe
-public class DefaultResponseItem extends DefaultItem<ConvertableItemAttributeValue> implements ResponseItem {
+public class DefaultResponseItem extends DefaultItem<ConvertibleItemAttributeValue> implements ResponseItem {
     private DefaultResponseItem(Builder builder) {
         super(builder);
     }
@@ -40,7 +40,7 @@ public class DefaultResponseItem extends DefaultItem<ConvertableItemAttributeVal
     }
 
     public static class Builder
-            extends DefaultItem.Builder<ConvertableItemAttributeValue, Builder>
+            extends DefaultItem.Builder<ConvertibleItemAttributeValue, Builder>
             implements ResponseItem.Builder {
         private Builder() {}
 

@@ -20,9 +20,13 @@ import software.amazon.awssdk.annotations.Immutable;
 import software.amazon.awssdk.annotations.NotThreadSafe;
 import software.amazon.awssdk.annotations.SdkPublicApi;
 import software.amazon.awssdk.annotations.ThreadSafe;
-import software.amazon.awssdk.enhanced.dynamodb.converter.ItemAttributeValueConverter;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.core.internal.http.loader.DefaultSdkAsyncHttpClientBuilder;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.AttributeConverter;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.SubtypeAttributeConverter;
 import software.amazon.awssdk.enhanced.dynamodb.internal.DefaultDynamoDbEnhancedAsyncClient;
-import software.amazon.awssdk.enhanced.dynamodb.model.ConverterAware;
+import software.amazon.awssdk.enhanced.dynamodb.model.AttributeConverterAware;
+import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
 import software.amazon.awssdk.utils.SdkAutoCloseable;
 import software.amazon.awssdk.utils.builder.CopyableBuilder;
@@ -85,6 +89,17 @@ public interface DynamoDbEnhancedAsyncClient
      * }
      * </code>
      *
+     * <p>
+     * Reasons this call may fail with a {@link RuntimeException}:
+     * <ol>
+     *     <li>We cannot automatically determine your AWS region. See {@link DefaultAwsRegionProviderChain} for where we check
+     *     for the region.</li>
+     *     <li>We cannot automatically determine your credentials. See {@link DefaultCredentialsProvider} for where we check
+     *     for your credentials.</li>
+     *     <li>We cannot automatically determine your HTTP client implementation. See {@link DefaultSdkAsyncHttpClientBuilder}
+     *     for where we check for an HTTP implementation.</li>
+     * </ol>
+     *
      * @see #builder()
      */
     static DynamoDbEnhancedAsyncClient create() {
@@ -114,6 +129,9 @@ public interface DynamoDbEnhancedAsyncClient
      * }
      * </code>
      *
+     * <p>
+     * This call should never fail with an {@link Exception}.
+     *
      * @see #create()
      */
     static Builder builder() {
@@ -137,8 +155,24 @@ public interface DynamoDbEnhancedAsyncClient
      *     CompletableFuture<ResponseItem> book = booksTable.getItem(...);
      * }
      * </code>
+     *
+     * <p>
+     * Reasons this call may fail with a {@link RuntimeException}:
+     * <ol>
+     *     <li>The provided table name is null.</li>
+     * </ol>
      */
     AsyncTable table(String tableName);
+
+    /**
+     * Close this client, and release all resources it is using. If a client was configured with
+     * {@link Builder#dynamoDbClient(DynamoDbAsyncClient)}, it <b>will not</b> be closed, and <b>must</b> be closed separately.
+     *
+     * <p>
+     * This call should never fail with an {@link Exception}.
+     */
+    @Override
+    void close();
 
     /**
      * A builder for {@link DynamoDbEnhancedAsyncClient}.
@@ -163,7 +197,7 @@ public interface DynamoDbEnhancedAsyncClient
      * </code>
      */
     @NotThreadSafe
-    interface Builder extends CopyableBuilder<Builder, DynamoDbEnhancedAsyncClient>, ConverterAware.Builder {
+    interface Builder extends CopyableBuilder<Builder, DynamoDbEnhancedAsyncClient>, AttributeConverterAware.Builder<Object> {
         /**
          * Configure a generated client to be used by the enhanced client to interact with DynamoDB. The enhanced client
          * will use the credentials and AWS Region of the provided generated client.
@@ -175,21 +209,48 @@ public interface DynamoDbEnhancedAsyncClient
          * <p>
          * If this is not configured, {@link DynamoDbAsyncClient#create()} will be used (and cleaned up with
          * {@link DynamoDbEnhancedAsyncClient#close()}).
+         *
+         * <p>
+         * Reasons this call may fail with a {@link RuntimeException}:
+         * <ol>
+         *     <li>If this method is called in parallel from multiple threads. This method is not thread safe.</li>
+         * </ol>
          */
         Builder dynamoDbClient(DynamoDbAsyncClient client);
 
         @Override
-        Builder addConverters(Collection<? extends ItemAttributeValueConverter> converters);
+        Builder addConverters(Collection<? extends AttributeConverter<?>> converters);
 
         @Override
-        Builder addConverter(ItemAttributeValueConverter converter);
+        Builder addConverter(AttributeConverter<?> converter);
+
+        @Override
+        Builder addSubtypeConverters(Collection<? extends SubtypeAttributeConverter<?>> subtypeAttributeConverters);
+
+        @Override
+        Builder addSubtypeConverter(SubtypeAttributeConverter<?> converter);
 
         @Override
         Builder clearConverters();
 
+        @Override
+        Builder clearSubtypeConverters();
+
         /**
          * Build a {@link DynamoDbEnhancedAsyncClient} from the provided configuration. This method can be invoked multiple
          * times to create multiple {@link DynamoDbEnhancedAsyncClient} instances.
+         *
+         * <p>
+         * Reasons this call may fail with a {@link RuntimeException}:
+         * <ol>
+         *     <li>We cannot automatically determine your AWS region. See {@link DefaultAwsRegionProviderChain} for where we check
+         *     for the region.</li>
+         *     <li>We cannot automatically determine your credentials. See {@link DefaultCredentialsProvider} for where we check
+         *     for your credentials.</li>
+         *     <li>We cannot automatically determine your HTTP client implementation. See {@link DefaultSdkAsyncHttpClientBuilder}
+         *     for where we check for an HTTP implementation.</li>
+         *     <li>If any mutating methods are called in parallel with this one. This class is not thread safe.</li>
+         * </ol>
          */
         @Override
         DynamoDbEnhancedAsyncClient build();

@@ -18,22 +18,22 @@ package software.amazon.awssdk.enhanced.dynamodb.internal.model;
 import java.util.function.Consumer;
 import software.amazon.awssdk.annotations.SdkInternalApi;
 import software.amazon.awssdk.annotations.ThreadSafe;
-import software.amazon.awssdk.enhanced.dynamodb.converter.ConversionContext;
-import software.amazon.awssdk.enhanced.dynamodb.model.ConvertableItemAttributeValue;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.ConversionContext;
+import software.amazon.awssdk.enhanced.dynamodb.model.ConvertibleItemAttributeValue;
 import software.amazon.awssdk.enhanced.dynamodb.model.ItemAttributeValue;
 import software.amazon.awssdk.enhanced.dynamodb.model.TypeToken;
 import software.amazon.awssdk.utils.Validate;
 
 /**
- * The default implementation of {@link ConvertableItemAttributeValue}.
+ * The default implementation of {@link ConvertibleItemAttributeValue}.
  */
 @SdkInternalApi
 @ThreadSafe
-public final class DefaultConvertableItemAttributeValue implements ConvertableItemAttributeValue {
+public final class DefaultConvertibleItemAttributeValue implements ConvertibleItemAttributeValue {
     private final ItemAttributeValue attributeValue;
     private final ConversionContext conversionContext;
 
-    private DefaultConvertableItemAttributeValue(Builder builder) {
+    private DefaultConvertibleItemAttributeValue(Builder builder) {
         this.attributeValue = Validate.paramNotNull(builder.attributeValue, "attributeValue");
         this.conversionContext = Validate.paramNotNull(builder.conversionContext, "conversionContext");
     }
@@ -44,14 +44,16 @@ public final class DefaultConvertableItemAttributeValue implements ConvertableIt
 
     @Override
     public <T> T as(Class<T> type) {
-        Object result = conversionContext.converter()
-                                         .fromAttributeValue(attributeValue, TypeToken.from(type), conversionContext);
+        Validate.paramNotNull(type, "type");
+        Object result = conversionContext.attributeConverter()
+                                         .fromAttributeValue(attributeValue, TypeToken.of(type), conversionContext);
         return validateConverterOutput(type, result);
     }
 
     @Override
     public <T> T as(TypeToken<T> type) {
-        Object result = conversionContext.converter()
+        Validate.paramNotNull(type, "type");
+        Object result = conversionContext.attributeConverter()
                                          .fromAttributeValue(attributeValue, type, conversionContext);
         return validateConverterOutput(type.rawClass(), result);
     }
@@ -88,8 +90,8 @@ public final class DefaultConvertableItemAttributeValue implements ConvertableIt
             return this;
         }
 
-        public DefaultConvertableItemAttributeValue build() {
-            return new DefaultConvertableItemAttributeValue(this);
+        public DefaultConvertibleItemAttributeValue build() {
+            return new DefaultConvertibleItemAttributeValue(this);
         }
     }
 }

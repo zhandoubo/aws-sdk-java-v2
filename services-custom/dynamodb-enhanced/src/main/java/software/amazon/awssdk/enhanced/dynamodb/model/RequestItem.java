@@ -24,7 +24,8 @@ import software.amazon.awssdk.annotations.SdkPublicApi;
 import software.amazon.awssdk.annotations.ThreadSafe;
 import software.amazon.awssdk.enhanced.dynamodb.AsyncTable;
 import software.amazon.awssdk.enhanced.dynamodb.Table;
-import software.amazon.awssdk.enhanced.dynamodb.converter.ItemAttributeValueConverter;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.AttributeConverter;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.SubtypeAttributeConverter;
 import software.amazon.awssdk.enhanced.dynamodb.internal.model.DefaultRequestItem;
 import software.amazon.awssdk.utils.builder.CopyableBuilder;
 import software.amazon.awssdk.utils.builder.ToCopyableBuilder;
@@ -42,11 +43,14 @@ import software.amazon.awssdk.utils.builder.ToCopyableBuilder;
 @SdkPublicApi
 @ThreadSafe
 @Immutable
-public interface RequestItem extends ConverterAware,
+public interface RequestItem extends AttributeConverterAware<Object>,
                                      AttributeAware<Object>,
                                      ToCopyableBuilder<RequestItem.Builder, RequestItem> {
     /**
      * Create a builder that can be used for configuring and creating a {@link RequestItem}.
+     *
+     * <p>
+     * This call should never fail with an {@link Exception}.
      */
     static Builder builder() {
         return DefaultRequestItem.builder();
@@ -56,7 +60,14 @@ public interface RequestItem extends ConverterAware,
      * Convert this request item into a {@link GeneratedRequestItem} using the converters attached to this item, only.
      *
      * This will not use the default converter chain or any converters associated with the client unless they were explicitly
-     * added via {@link Builder#addConverter(ItemAttributeValueConverter)} (or similar methods).
+     * added via {@link Builder#addConverter(AttributeConverter)} (or similar methods).
+     *
+     * <p>
+     * Reasons this call may fail with a {@link RuntimeException}:
+     * <ol>
+     *     <li>The configured converter chain does not support converting a {@link GeneratedRequestItem}.</li>
+     *     <li>The configured converter chain failed to convert an attribute.</li>
+     * </ol>
      */
     GeneratedRequestItem toGeneratedRequestItem();
 
@@ -64,20 +75,29 @@ public interface RequestItem extends ConverterAware,
      * A builder that can be used for configuring and creating a {@link RequestItem}.
      */
     @NotThreadSafe
-    interface Builder extends ConverterAware.Builder,
+    interface Builder extends AttributeConverterAware.Builder<Object>,
                               AttributeAware.Builder<Object>,
                               CopyableBuilder<RequestItem.Builder, RequestItem> {
         @Override
-        Builder addConverters(Collection<? extends ItemAttributeValueConverter> converters);
+        Builder addConverters(Collection<? extends AttributeConverter<?>> converters);
 
         @Override
-        Builder addConverter(ItemAttributeValueConverter converter);
+        Builder addConverter(AttributeConverter<?> converter);
+
+        @Override
+        Builder addSubtypeConverters(Collection<? extends SubtypeAttributeConverter<?>> subtypeAttributeConverters);
+
+        @Override
+        Builder addSubtypeConverter(SubtypeAttributeConverter<?> converter);
 
         @Override
         Builder clearConverters();
 
         @Override
-        Builder putAttributes(Map<String, Object> attributeValues);
+        Builder clearSubtypeConverters();
+
+        @Override
+        Builder putAttributes(Map<String, ?> attributeValues);
 
         @Override
         Builder putAttribute(String attributeKey, Object attributeValue);
@@ -93,6 +113,14 @@ public interface RequestItem extends ConverterAware,
          *     requestItem.putAttribute("countryCodes", c -> c.putAttribute("US", "United States of America")
          *                                                    .putAttribute("GB", "United Kingdom"));
          * </code>
+         *
+         * <p>
+         * Reasons this call may fail with a {@link RuntimeException}:
+         * <ol>
+         *     <li>The attribute key is null.</li>
+         *     <li>If this or any other {@code attribute}-modifying method is called in parallel with this one.
+         *     This method is not thread safe.</li>
+         * </ol>
          */
         default Builder putAttribute(String attributeKey, Consumer<RequestItem.Builder> subItemAttribute) {
             RequestItem.Builder requestItemBuilder = RequestItem.builder();
@@ -106,6 +134,16 @@ public interface RequestItem extends ConverterAware,
         @Override
         Builder clearAttributes();
 
+        /**
+         * Build a {@link RequestItem} from the provided configuration. This method can be invoked multiple times to
+         * create multiple {@code RequestItem} instances.
+         *
+         * <p>
+         * Reasons this call may fail with a {@link RuntimeException}:
+         * <ol>
+         *     <li>If any mutating methods are called in parallel with this one. This class is not thread safe.</li>
+         * </ol>
+         */
         @Override
         RequestItem build();
     }

@@ -16,15 +16,16 @@
 package software.amazon.awssdk.enhanced.dynamodb.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Matchers.anyObject;
+import static org.mockito.Matchers.any;
 
 import java.util.Collections;
 import org.junit.Test;
 import org.mockito.Mockito;
-import software.amazon.awssdk.enhanced.dynamodb.converter.ConversionCondition;
-import software.amazon.awssdk.enhanced.dynamodb.converter.ItemAttributeValueConverter;
-import software.amazon.awssdk.enhanced.dynamodb.converter.bundled.IntegerConverter;
-import software.amazon.awssdk.enhanced.dynamodb.converter.bundled.StringConverter;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.AttributeConverter;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.ConversionContext;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.SubtypeAttributeConverter;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.bundled.IntegerAttributeConverter;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.bundled.StringAttributeConverter;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 
 public class GeneratedResponseItemTest {
@@ -33,8 +34,8 @@ public class GeneratedResponseItemTest {
         AttributeValue attributeValue = AttributeValue.builder().s("a").build();
         AttributeValue attributeValue2 = AttributeValue.builder().s("b").build();
 
-        ItemAttributeValueConverter converter = new StringConverter();
-        ItemAttributeValueConverter converter2 = new IntegerConverter();
+        AttributeConverter<String> converter = StringAttributeConverter.create();
+        AttributeConverter<Integer> converter2 = IntegerAttributeConverter.create();
 
         GeneratedResponseItem item = GeneratedResponseItem.builder()
                                                           .putAttribute("toremove", attributeValue)
@@ -60,14 +61,14 @@ public class GeneratedResponseItemTest {
 
     @Test
     public void toResponseItemCallsConfiguredConverters() {
-        ItemAttributeValueConverter converter = Mockito.mock(ItemAttributeValueConverter.class);
-        Mockito.when(converter.defaultConversionCondition()).thenReturn(ConversionCondition.isInstanceOf(Object.class));
-        Mockito.when(converter.fromAttributeValue(anyObject(), anyObject(), anyObject()))
+        SubtypeAttributeConverter<Object> converter = Mockito.mock(SubtypeAttributeConverter.class);
+        Mockito.when(converter.type()).thenReturn(TypeToken.of(Object.class));
+        Mockito.when(converter.fromAttributeValue(any(), any(), any(ConversionContext.class)))
                .thenReturn(ResponseItem.builder().putAttribute("foo", null).build());
 
         ResponseItem item = GeneratedResponseItem.builder()
                                                  .putAttribute("foo", AttributeValue.builder().s("bar").build())
-                                                 .addConverter(converter)
+                                                 .addSubtypeConverter(converter)
                                                  .build()
                                                  .toResponseItem();
 

@@ -28,6 +28,11 @@ import software.amazon.awssdk.annotations.SdkPublicApi;
 @FunctionalInterface
 @SdkPublicApi
 public interface AwsCredentialsProvider {
+
+    static AwsCredentialsProvider defaultCredentialsProvider() {
+        return DefaultCredentialsProvider.create();
+    }
+
     /**
      * Returns {@link AwsCredentials} that can be used to authorize an AWS request. Each implementation of AWSCredentialsProvider
      * can chose its own strategy for loading credentials. For example, an implementation might load credentials from an existing

@@ -29,8 +29,8 @@ import software.amazon.awssdk.utils.builder.ToCopyableBuilder;
  * An item that is returned by DynamoDB. An item is a single, unique entry in a DynamoDB table.
  *
  * <p>
- * A {@code ResponseItem} is a {@code Map<String, ConvertableItemAttributeValue>}. Each attribute can be converted into a Java
- * type via {@link ConvertableItemAttributeValue#as(Class)} or similar methods. For example:
+ * A {@code ResponseItem} is a {@code Map<String, ConvertibleItemAttributeValue>}. Each attribute can be converted into a Java
+ * type via {@link ConvertibleItemAttributeValue#as(Class)} or similar methods. For example:
  * {@code String id = responseItem.attribute("id").asString();}
  *
  * @see Table
@@ -39,10 +39,13 @@ import software.amazon.awssdk.utils.builder.ToCopyableBuilder;
 @SdkPublicApi
 @ThreadSafe
 @Immutable
-public interface ResponseItem extends AttributeAware<ConvertableItemAttributeValue>,
+public interface ResponseItem extends AttributeAware<ConvertibleItemAttributeValue>,
                                       ToCopyableBuilder<ResponseItem.Builder, ResponseItem> {
     /**
      * Create a builder that can be used for configuring and creating a {@link ResponseItem}.
+     *
+     * <p>
+     * This call should never fail with an {@link Exception}.
      */
     static Builder builder() {
         return DefaultResponseItem.builder();
@@ -51,13 +54,13 @@ public interface ResponseItem extends AttributeAware<ConvertableItemAttributeVal
     /**
      * A builder that can be used for configuring and creating a {@link ResponseItem}.
      */
-    interface Builder extends AttributeAware.Builder<ConvertableItemAttributeValue>,
+    interface Builder extends AttributeAware.Builder<ConvertibleItemAttributeValue>,
                               CopyableBuilder<ResponseItem.Builder, ResponseItem> {
         @Override
-        Builder putAttributes(Map<String, ConvertableItemAttributeValue> attributeValues);
+        Builder putAttributes(Map<String, ? extends ConvertibleItemAttributeValue> attributeValues);
 
         @Override
-        Builder putAttribute(String attributeKey, ConvertableItemAttributeValue attributeValue);
+        Builder putAttribute(String attributeKey, ConvertibleItemAttributeValue attributeValue);
 
         @Override
         Builder removeAttribute(String attributeKey);
@@ -65,6 +68,16 @@ public interface ResponseItem extends AttributeAware<ConvertableItemAttributeVal
         @Override
         Builder clearAttributes();
 
+        /**
+         * Build a {@link ResponseItem} from the provided configuration. This method can be invoked multiple times to
+         * create multiple {@code ResponseItem} instances.
+         *
+         * <p>
+         * Reasons this call may fail with a {@link RuntimeException}:
+         * <ol>
+         *     <li>If any mutating methods are called in parallel with this one. This class is not thread safe.</li>
+         * </ol>
+         */
         @Override
         ResponseItem build();
     }

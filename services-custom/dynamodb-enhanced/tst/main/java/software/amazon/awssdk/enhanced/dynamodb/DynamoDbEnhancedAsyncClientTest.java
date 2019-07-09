@@ -28,10 +28,11 @@ import org.junit.AfterClass;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
-import software.amazon.awssdk.enhanced.dynamodb.converter.ConversionCondition;
-import software.amazon.awssdk.enhanced.dynamodb.converter.ItemAttributeValueConverter;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.AttributeConverter;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.ConversionContext;
 import software.amazon.awssdk.enhanced.dynamodb.model.ItemAttributeValue;
 import software.amazon.awssdk.enhanced.dynamodb.model.ResponseItem;
+import software.amazon.awssdk.enhanced.dynamodb.model.TypeToken;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
@@ -41,9 +42,10 @@ import software.amazon.awssdk.services.dynamodb.model.PutItemResponse;
 
 public class DynamoDbEnhancedAsyncClientTest {
     private static final DynamoDbAsyncClient GENERATED_CLIENT = Mockito.mock(DynamoDbAsyncClient.class);
-    private static final DynamoDbEnhancedAsyncClient CLIENT = DynamoDbEnhancedAsyncClient.builder()
-                                                                                         .dynamoDbClient(GENERATED_CLIENT)
-                                                                                         .build();
+    private static final DynamoDbEnhancedAsyncClient CLIENT =
+            DynamoDbEnhancedAsyncClient.builder()
+                                       .dynamoDbClient(GENERATED_CLIENT)
+                                       .build();
 
     @AfterClass
     public static void reset() {
@@ -63,7 +65,7 @@ public class DynamoDbEnhancedAsyncClientTest {
                .thenReturn(CompletableFuture.completedFuture(PutItemResponse.builder().build()));
 
         AsyncTable table = CLIENT.table("table");
-        table.putItem(r -> r.putAttribute("foo", "bar")).join();
+        table.putItem(r -> r.putAttribute("foo", "bar"));
 
         PutItemRequest.Builder sentRequestBuilder = PutItemRequest.builder();
         putRequestCaptor.getValue().accept(sentRequestBuilder);
@@ -101,14 +103,14 @@ public class DynamoDbEnhancedAsyncClientTest {
         Mockito.when(GENERATED_CLIENT.putItem(any(Consumer.class)))
                .thenReturn(CompletableFuture.completedFuture(PutItemResponse.builder().build()));
 
-        ItemAttributeValueConverter clientLevelStringConverter = converter(ConversionCondition.isExactInstanceOf(String.class));
-        ItemAttributeValueConverter clientLevelIntegerConverter = converter(ConversionCondition.isExactInstanceOf(Integer.class));
+        AttributeConverter<?> clientLevelStringConverter = converter(String.class);
+        AttributeConverter<?> clientLevelIntegerConverter = converter(Integer.class);
+        AttributeConverter<?> itemLevelStringConverter = converter(String.class);
 
-        ItemAttributeValueConverter itemLevelStringConverter = converter(ConversionCondition.isExactInstanceOf(String.class));
-
-
-        Mockito.when(clientLevelIntegerConverter.toAttributeValue(any(), any())).thenReturn(ItemAttributeValue.fromNumber("1"));
-        Mockito.when(itemLevelStringConverter.toAttributeValue(any(), any())).thenReturn(ItemAttributeValue.fromString("bar"));
+        Mockito.when(clientLevelIntegerConverter.toAttributeValue(any(), any(ConversionContext.class)))
+               .thenReturn(ItemAttributeValue.fromNumber("1"));
+        Mockito.when(itemLevelStringConverter.toAttributeValue(any(), any(ConversionContext.class)))
+               .thenReturn(ItemAttributeValue.fromString("bar"));
 
         DynamoDbEnhancedAsyncClient client = DynamoDbEnhancedAsyncClient.builder()
                                                                         .dynamoDbClient(GENERATED_CLIENT)
@@ -122,10 +124,10 @@ public class DynamoDbEnhancedAsyncClientTest {
                             .addConverter(itemLevelStringConverter))
              .join();
 
-        Mockito.verify(clientLevelIntegerConverter).toAttributeValue(any(), any());
+        Mockito.verify(clientLevelIntegerConverter).toAttributeValue(any(), any(ConversionContext.class));
 
-        Mockito.verify(itemLevelStringConverter).toAttributeValue(any(), any());
-        Mockito.verify(clientLevelStringConverter, never()).toAttributeValue(any(), any());
+        Mockito.verify(itemLevelStringConverter).toAttributeValue(any(), any(ConversionContext.class));
+        Mockito.verify(clientLevelStringConverter, never()).toAttributeValue(any(), any(ConversionContext.class));
     }
 
     @Test
@@ -134,9 +136,9 @@ public class DynamoDbEnhancedAsyncClientTest {
         Mockito.verify(GENERATED_CLIENT, never()).close();
     }
 
-    private ItemAttributeValueConverter converter(ConversionCondition condition) {
-        ItemAttributeValueConverter converter = Mockito.mock(ItemAttributeValueConverter.class);
-        Mockito.when(converter.defaultConversionCondition()).thenReturn(condition);
+    private <T> AttributeConverter<T> converter(Class<T> type) {
+        AttributeConverter<T> converter = Mockito.mock(AttributeConverter.class);
+        Mockito.when(converter.type()).thenReturn(TypeToken.of(type));
         return converter;
     }
 }

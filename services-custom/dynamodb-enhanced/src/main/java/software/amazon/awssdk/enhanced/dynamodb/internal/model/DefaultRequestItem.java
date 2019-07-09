@@ -17,7 +17,7 @@ package software.amazon.awssdk.enhanced.dynamodb.internal.model;
 
 import software.amazon.awssdk.annotations.SdkInternalApi;
 import software.amazon.awssdk.annotations.ThreadSafe;
-import software.amazon.awssdk.enhanced.dynamodb.converter.ConversionContext;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.ConversionContext;
 import software.amazon.awssdk.enhanced.dynamodb.model.GeneratedRequestItem;
 import software.amazon.awssdk.enhanced.dynamodb.model.ItemAttributeValue;
 import software.amazon.awssdk.enhanced.dynamodb.model.RequestItem;
@@ -38,9 +38,10 @@ public class DefaultRequestItem extends DefaultItem<Object> implements RequestIt
 
     @Override
     public GeneratedRequestItem toGeneratedRequestItem() {
-        ItemAttributeValue itemAttributeValue = converterChain.toAttributeValue(this, ConversionContext.builder()
-                                                                                                       .converter(converterChain)
-                                                                                                       .build());
+        ConversionContext context = ConversionContext.builder()
+                                                     .attributeConverter(converterChain)
+                                                     .build();
+        ItemAttributeValue itemAttributeValue = converterChain.toAttributeValue(this, context);
         return GeneratedRequestItem.builder()
                                    .putAttributes(itemAttributeValue.toGeneratedItem())
                                    .build();

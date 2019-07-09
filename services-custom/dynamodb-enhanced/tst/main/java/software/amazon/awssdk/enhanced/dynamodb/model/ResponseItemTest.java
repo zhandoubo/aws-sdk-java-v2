@@ -24,8 +24,8 @@ import org.mockito.Mockito;
 public class ResponseItemTest {
     @Test
     public void allConfigurationMethodsWork() {
-        ConvertableItemAttributeValue attributeValue = Mockito.mock(ConvertableItemAttributeValue.class);
-        ConvertableItemAttributeValue attributeValue2 = Mockito.mock(ConvertableItemAttributeValue.class);
+        ConvertibleItemAttributeValue attributeValue = Mockito.mock(ConvertibleItemAttributeValue.class);
+        ConvertibleItemAttributeValue attributeValue2 = Mockito.mock(ConvertibleItemAttributeValue.class);
 
         ResponseItem item = ResponseItem.builder()
                                         .putAttribute("toremove", attributeValue)

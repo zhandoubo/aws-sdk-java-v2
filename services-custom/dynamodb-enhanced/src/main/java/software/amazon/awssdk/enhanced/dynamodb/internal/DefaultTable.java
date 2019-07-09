@@ -13,14 +13,14 @@
  * permissions and limitations under the License.
  */
 
-package software.amazon.awssdk.enhanced.dynamodb.internal.model;
+package software.amazon.awssdk.enhanced.dynamodb.internal;
 
 import software.amazon.awssdk.annotations.SdkInternalApi;
 import software.amazon.awssdk.annotations.ThreadSafe;
 import software.amazon.awssdk.enhanced.dynamodb.Table;
-import software.amazon.awssdk.enhanced.dynamodb.converter.ItemAttributeValueConverter;
-import software.amazon.awssdk.enhanced.dynamodb.internal.converter.ItemAttributeValueConverterChain;
-import software.amazon.awssdk.enhanced.dynamodb.model.ConverterAware;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.ChainAttributeConverter;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.SubtypeAttributeConverter;
+import software.amazon.awssdk.enhanced.dynamodb.model.AttributeConverterAware;
 import software.amazon.awssdk.enhanced.dynamodb.model.GeneratedRequestItem;
 import software.amazon.awssdk.enhanced.dynamodb.model.GeneratedResponseItem;
 import software.amazon.awssdk.enhanced.dynamodb.model.RequestItem;
@@ -37,7 +37,7 @@ import software.amazon.awssdk.utils.builder.Buildable;
 public class DefaultTable implements Table {
     private final DynamoDbClient client;
     private final String tableName;
-    private final ItemAttributeValueConverter converter;
+    private final SubtypeAttributeConverter<Object> converter;
 
     private DefaultTable(Builder builder) {
         this.client = builder.client;
@@ -56,10 +56,10 @@ public class DefaultTable implements Table {
 
     @Override
     public ResponseItem getItem(RequestItem key) {
-        ItemAttributeValueConverter itemConverterChain = getConverter(key);
+        SubtypeAttributeConverter<Object> itemConverterChain = getConverter(key);
         key = key.toBuilder()
                  .clearConverters()
-                 .addConverter(itemConverterChain)
+                 .addSubtypeConverter(itemConverterChain)
                  .build();
 
         GeneratedRequestItem generatedKey = key.toGeneratedRequestItem();
@@ -69,7 +69,7 @@ public class DefaultTable implements Table {
 
         GeneratedResponseItem generatedResponse = GeneratedResponseItem.builder()
                                                                        .putAttributes(response.item())
-                                                                       .addConverter(itemConverterChain)
+                                                                       .addSubtypeConverter(itemConverterChain)
                                                                        .build();
 
         return generatedResponse.toResponseItem();
@@ -79,7 +79,7 @@ public class DefaultTable implements Table {
     public void putItem(RequestItem item) {
         item = item.toBuilder()
                    .clearConverters()
-                   .addConverter(getConverter(item))
+                   .addSubtypeConverter(getConverter(item))
                    .build();
 
         GeneratedRequestItem generatedRequest = item.toGeneratedRequestItem();
@@ -88,17 +88,17 @@ public class DefaultTable implements Table {
                              .item(generatedRequest.attributes()));
     }
 
-    private ItemAttributeValueConverter getConverter(ConverterAware item) {
-        return ItemAttributeValueConverterChain.builder()
-                                               .parent(converter)
-                                               .addConverters(item.converters())
-                                               .build();
+    private SubtypeAttributeConverter<Object> getConverter(AttributeConverterAware<?> item) {
+        return ChainAttributeConverter.builder()
+                                      .parent(converter)
+                                      .addConverters(item.converters())
+                                      .build();
     }
 
     public static class Builder implements Buildable {
         private String tableName;
         private DynamoDbClient client;
-        private ItemAttributeValueConverter converter;
+        private SubtypeAttributeConverter<Object> converter;
 
         public Builder name(String tableName) {
             this.tableName = tableName;
@@ -110,7 +110,7 @@ public class DefaultTable implements Table {
             return this;
         }
 
-        public Builder converter(ItemAttributeValueConverter converter) {
+        public Builder converter(SubtypeAttributeConverter<Object> converter) {
             this.converter = converter;
             return this;
         }

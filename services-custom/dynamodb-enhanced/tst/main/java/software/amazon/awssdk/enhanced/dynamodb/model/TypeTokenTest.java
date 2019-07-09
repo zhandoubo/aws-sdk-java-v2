@@ -64,7 +64,7 @@ public class TypeTokenTest {
 
     @Test
     public void helperCreationMethodsWork() {
-        assertThat(TypeToken.from(String.class).rawClass()).isEqualTo(String.class);
+        assertThat(TypeToken.of(String.class).rawClass()).isEqualTo(String.class);
 
         assertThat(TypeToken.listOf(String.class)).satisfies(v -> {
             assertThat(v.rawClass()).isEqualTo(List.class);
@@ -82,8 +82,8 @@ public class TypeTokenTest {
 
     @Test
     public void equalityIsBasedOnInnerEquality() {
-        assertThat(TypeToken.from(String.class)).isEqualTo(TypeToken.from(String.class));
-        assertThat(TypeToken.from(String.class)).isNotEqualTo(TypeToken.from(Integer.class));
+        assertThat(TypeToken.of(String.class)).isEqualTo(TypeToken.of(String.class));
+        assertThat(TypeToken.of(String.class)).isNotEqualTo(TypeToken.of(Integer.class));
 
         assertThat(new TypeToken<Map<String, List<String>>>(){}).isEqualTo(new TypeToken<Map<String, List<String>>>(){});
         assertThat(new TypeToken<Map<String, List<String>>>(){}).isNotEqualTo(new TypeToken<Map<String, List<Integer>>>(){});

@@ -19,12 +19,14 @@ import java.util.Collection;
 import software.amazon.awssdk.annotations.SdkInternalApi;
 import software.amazon.awssdk.annotations.ThreadSafe;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
+import software.amazon.awssdk.enhanced.dynamodb.MappedTable;
 import software.amazon.awssdk.enhanced.dynamodb.Table;
-import software.amazon.awssdk.enhanced.dynamodb.converter.DefaultConverterChain;
-import software.amazon.awssdk.enhanced.dynamodb.converter.ItemAttributeValueConverter;
-import software.amazon.awssdk.enhanced.dynamodb.internal.converter.ItemAttributeValueConverterChain;
-import software.amazon.awssdk.enhanced.dynamodb.internal.model.DefaultTable;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.AttributeConverter;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.ChainAttributeConverter;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.SubtypeAttributeConverter;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.bundled.DefaultAttributeConverter;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.utils.Validate;
 
 /**
  * The default implementation of {@link DynamoDbEnhancedClient}.
@@ -34,7 +36,7 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 public class DefaultDynamoDbEnhancedClient implements DynamoDbEnhancedClient {
     private boolean shouldCloseUnderlyingClient;
     private final DynamoDbClient client;
-    private final ItemAttributeValueConverterChain converter;
+    private final SubtypeAttributeConverter<Object> converter;
 
     private DefaultDynamoDbEnhancedClient(Builder builder) {
         if (builder.client == null) {
@@ -62,6 +64,15 @@ public class DefaultDynamoDbEnhancedClient implements DynamoDbEnhancedClient {
     }
 
     @Override
+    public MappedTable mappedTable(String tableName) {
+        return DefaultMappedTable.builder()
+                                 .converter(converter)
+                                 .dynamoDbClient(client)
+                                 .name(tableName)
+                                 .build();
+    }
+
+    @Override
     public void close() {
         if (shouldCloseUnderlyingClient) {
             client.close();
@@ -74,9 +85,9 @@ public class DefaultDynamoDbEnhancedClient implements DynamoDbEnhancedClient {
     }
 
     public static class Builder implements DynamoDbEnhancedClient.Builder {
-        private ItemAttributeValueConverterChain.Builder converterChain =
-                ItemAttributeValueConverterChain.builder()
-                                                .parent(DefaultConverterChain.create());
+        private ChainAttributeConverter.Builder<Object> converterChain =
+                ChainAttributeConverter.builder()
+                                       .parent(DefaultAttributeConverter.create());
         private DynamoDbClient client;
 
         private Builder() {}
@@ -88,13 +99,16 @@ public class DefaultDynamoDbEnhancedClient implements DynamoDbEnhancedClient {
         }
 
         @Override
-        public Builder addConverters(Collection<? extends ItemAttributeValueConverter> converters) {
+        public Builder addConverters(Collection<? extends AttributeConverter<?>> converters) {
+            Validate.paramNotNull(converters, "converters");
+            Validate.noNullElements(converters, "Converters must not contain null members.");
             converterChain.addConverters(converters);
             return this;
         }
 
         @Override
-        public Builder addConverter(ItemAttributeValueConverter converter) {
+        public Builder addConverter(AttributeConverter<?> converter) {
+            Validate.paramNotNull(converter, "converter");
             converterChain.addConverter(converter);
             return this;
         }
@@ -102,6 +116,27 @@ public class DefaultDynamoDbEnhancedClient implements DynamoDbEnhancedClient {
         @Override
         public Builder clearConverters() {
             converterChain.clearConverters();
+            return this;
+        }
+
+        @Override
+        public Builder addSubtypeConverters(Collection<? extends SubtypeAttributeConverter<?>> converters) {
+            Validate.paramNotNull(converters, "converters");
+            Validate.noNullElements(converters, "Converters must not contain null members.");
+            converterChain.addSubtypeConverters(converters);
+            return this;
+        }
+
+        @Override
+        public Builder addSubtypeConverter(SubtypeAttributeConverter<?> converter) {
+            Validate.paramNotNull(converter, "converter");
+            converterChain.addSubtypeConverter(converter);
+            return this;
+        }
+
+        @Override
+        public Builder clearSubtypeConverters() {
+            converterChain.clearSubtypeConverters();
             return this;
         }
 

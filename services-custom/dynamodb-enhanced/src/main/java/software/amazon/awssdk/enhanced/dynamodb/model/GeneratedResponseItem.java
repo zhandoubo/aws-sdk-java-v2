@@ -20,7 +20,8 @@ import java.util.Map;
 import software.amazon.awssdk.annotations.Immutable;
 import software.amazon.awssdk.annotations.SdkPublicApi;
 import software.amazon.awssdk.annotations.ThreadSafe;
-import software.amazon.awssdk.enhanced.dynamodb.converter.ItemAttributeValueConverter;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.AttributeConverter;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.SubtypeAttributeConverter;
 import software.amazon.awssdk.enhanced.dynamodb.internal.model.DefaultGeneratedResponseItem;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.utils.builder.CopyableBuilder;
@@ -33,10 +34,13 @@ import software.amazon.awssdk.utils.builder.ToCopyableBuilder;
 @ThreadSafe
 @Immutable
 public interface GeneratedResponseItem extends AttributeAware<AttributeValue>,
-                                               ConverterAware,
+                                               AttributeConverterAware<Object>,
                                                ToCopyableBuilder<GeneratedResponseItem.Builder, GeneratedResponseItem> {
     /**
      * Create a builder for configuring and creating a {@link GeneratedResponseItem}.
+     *
+     * <p>
+     * This call should never fail with an {@link Exception}.
      */
     static Builder builder() {
         return DefaultGeneratedResponseItem.builder();
@@ -47,7 +51,13 @@ public interface GeneratedResponseItem extends AttributeAware<AttributeValue>,
      *
      * <p>
      * This will not use the default converter chain or any converters associated with the client unless they were explicitly
-     * added via {@link Builder#addConverter(ItemAttributeValueConverter)} (or similar methods).
+     * added via {@link Builder#addConverter(AttributeConverter)} (or similar methods).
+     *
+     * <p>
+     * Reasons this call may fail with a {@link RuntimeException}:
+     * <ol>
+     *     <li>The configured converter chain does not support converting a {@link ResponseItem}.</li>
+     * </ol>
      */
     ResponseItem toResponseItem();
 
@@ -55,10 +65,10 @@ public interface GeneratedResponseItem extends AttributeAware<AttributeValue>,
      * A builder for configuring and creating a {@link GeneratedResponseItem}.
      */
     interface Builder extends AttributeAware.Builder<AttributeValue>,
-                              ConverterAware.Builder ,
+                              AttributeConverterAware.Builder<Object>,
                               CopyableBuilder<Builder, GeneratedResponseItem> {
         @Override
-        Builder putAttributes(Map<String, AttributeValue> attributeValues);
+        Builder putAttributes(Map<String, ? extends AttributeValue> attributeValues);
 
         @Override
         Builder putAttribute(String attributeKey, AttributeValue attributeValue);
@@ -70,14 +80,33 @@ public interface GeneratedResponseItem extends AttributeAware<AttributeValue>,
         Builder clearAttributes();
 
         @Override
-        Builder addConverters(Collection<? extends ItemAttributeValueConverter> converters);
+        Builder addConverters(Collection<? extends AttributeConverter<?>> converters);
 
         @Override
-        Builder addConverter(ItemAttributeValueConverter converter);
+        Builder addConverter(AttributeConverter<?> converter);
 
         @Override
         Builder clearConverters();
 
+        @Override
+        Builder addSubtypeConverters(Collection<? extends SubtypeAttributeConverter<?>> collection);
+
+        @Override
+        Builder addSubtypeConverter(SubtypeAttributeConverter<?> converter);
+
+        @Override
+        Builder clearSubtypeConverters();
+
+        /**
+         * Build a {@link GeneratedResponseItem} from the provided configuration. This method can be invoked multiple times to
+         * create multiple {@code GeneratedResponseItem} instances.
+         *
+         * <p>
+         * Reasons this call may fail with a {@link RuntimeException}:
+         * <ol>
+         *     <li>If any mutating methods are called in parallel with this one. This class is not thread safe.</li>
+         * </ol>
+         */
         @Override
         GeneratedResponseItem build();
     }

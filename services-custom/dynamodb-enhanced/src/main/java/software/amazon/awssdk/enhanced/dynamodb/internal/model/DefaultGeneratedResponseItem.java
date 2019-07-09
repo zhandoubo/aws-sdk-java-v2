@@ -17,7 +17,7 @@ package software.amazon.awssdk.enhanced.dynamodb.internal.model;
 
 import software.amazon.awssdk.annotations.SdkInternalApi;
 import software.amazon.awssdk.annotations.ThreadSafe;
-import software.amazon.awssdk.enhanced.dynamodb.converter.ConversionContext;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.ConversionContext;
 import software.amazon.awssdk.enhanced.dynamodb.model.GeneratedResponseItem;
 import software.amazon.awssdk.enhanced.dynamodb.model.ItemAttributeValue;
 import software.amazon.awssdk.enhanced.dynamodb.model.ResponseItem;
@@ -43,8 +43,8 @@ public class DefaultGeneratedResponseItem extends DefaultItem<AttributeValue> im
     public ResponseItem toResponseItem() {
         ItemAttributeValue attributeValue = ItemAttributeValue.fromGeneratedItem(attributes());
         Object result = converterChain.fromAttributeValue(attributeValue,
-                                                          TypeToken.from(ResponseItem.class),
-                                                          ConversionContext.builder().converter(converterChain).build());
+                                                          TypeToken.of(ResponseItem.class),
+                                                          ConversionContext.builder().attributeConverter(converterChain).build());
         return Validate.isInstanceOf(ResponseItem.class, result, "Conversion chain did not generated a ResponseItem.");
     }
 

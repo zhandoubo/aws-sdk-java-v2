@@ -13,27 +13,28 @@
  * permissions and limitations under the License.
  */
 
-package software.amazon.awssdk.enhanced.dynamodb.converter;
+package software.amazon.awssdk.enhanced.dynamodb.converter.attribute;
 
 import java.util.Optional;
 import software.amazon.awssdk.annotations.Immutable;
 import software.amazon.awssdk.annotations.NotThreadSafe;
 import software.amazon.awssdk.annotations.SdkPublicApi;
 import software.amazon.awssdk.annotations.ThreadSafe;
+import software.amazon.awssdk.enhanced.dynamodb.converter.attribute.bundled.DefaultAttributeConverter;
 import software.amazon.awssdk.enhanced.dynamodb.internal.converter.DefaultConversionContext;
 import software.amazon.awssdk.utils.builder.CopyableBuilder;
 import software.amazon.awssdk.utils.builder.ToCopyableBuilder;
 
 /**
- * The context associated with a single {@link ItemAttributeValueConverter#fromAttributeValue} or
- * {@link ItemAttributeValueConverter#toAttributeValue} call.
+ * The context associated with a single {@link AttributeConverter} or {@link SubtypeAttributeConverter} call.
  *
  * <p>
  * This includes helpful information that the converter can use for debugging purposes or in its implementation of the
  * converter itself. Not all converters will require information from the context.
  *
  * <p>
- * @see ItemAttributeValueConverter
+ * @see AttributeConverter
+ * @see SubtypeAttributeConverter
  */
 @SdkPublicApi
 @ThreadSafe
@@ -41,9 +42,25 @@ import software.amazon.awssdk.utils.builder.ToCopyableBuilder;
 public interface ConversionContext extends ToCopyableBuilder<ConversionContext.Builder, ConversionContext> {
     /**
      * Create a builder that can be used for defining and creating a {@link ConversionContext}.
+     *
+     * <p>
+     * This call should never fail with an {@link Exception}.
      */
     static Builder builder() {
         return DefaultConversionContext.builder();
+    }
+
+    /**
+     * Create a {@link ConversionContext} with the default options.
+     *
+     * <p>
+     * Equivalent to {@code ConversionContext.builder().attributeConverter(DefaultAttributeConverter.create()).build()}.
+     *
+     * <p>
+     * This call should never fail with an {@link Exception}.
+     */
+    static ConversionContext defaultConversionContext() {
+        return builder().attributeConverter(DefaultAttributeConverter.create()).build();
     }
 
     /**
@@ -57,17 +74,19 @@ public interface ConversionContext extends ToCopyableBuilder<ConversionContext.B
      *     <li>For list members, this will be the name of the list.</li>
      *     <li>For map keys and values, this will be the name of the map.</li>
      * </ul>
+     *
+     * <p>
+     * This call should never fail with an {@link Exception}.
      */
     Optional<String> attributeName();
 
     /**
-     * The conversion chain associated with the item being converted.
+     * Retrieve the attribute converter associated with the current conversion.
      *
      * <p>
-     * This is useful for implementing container types, where the original conversion chain is needed to convert sub-members.
-     * For example, a list converter would likely use this converter for each of the members in the list.
+     * This call should never fail with an {@link Exception}.
      */
-    ItemAttributeValueConverter converter();
+    SubtypeAttributeConverter<Object> attributeConverter();
 
     /**
      * A builder for defining and creating a {@link ConversionContext}. This can be created with {@link #builder()}.
@@ -78,15 +97,32 @@ public interface ConversionContext extends ToCopyableBuilder<ConversionContext.B
         /**
          * Specify the name of the attribute being converted. This value is not required.
          *
+         * <p>
+         * This call should never fail with an {@link Exception}.
+         *
          * @see #attributeName()
          */
         Builder attributeName(String attributeName);
 
         /**
-         * Specify the conversion chain associated with the item being converted.
+         * Specify the attribute converter associated with the current conversion. This value is required.
          *
-         * @see #converter()
+         * <p>
+         * This call should never fail with an {@link Exception}.
          */
-        Builder converter(ItemAttributeValueConverter converter);
+        Builder attributeConverter(SubtypeAttributeConverter<Object> converter);
+
+        /**
+         * Build a {@link ConversionContext} from the provided configuration. This method can be invoked multiple times to
+         * create multiple {@code ConversionContext} instances.
+         *
+         * <p>
+         * Reasons this call may fail with a {@link RuntimeException}:
+         * <ol>
+         *     <li>If any mutating methods are called in parallel with this one. This class is not thread safe.</li>
+         * </ol>
+         */
+        @Override
+        ConversionContext build();
     }
 }
