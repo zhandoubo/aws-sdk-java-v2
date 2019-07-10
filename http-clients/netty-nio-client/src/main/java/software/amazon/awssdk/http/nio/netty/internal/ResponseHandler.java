@@ -267,6 +267,7 @@ public class ResponseHandler extends SimpleChannelInboundHandler<HttpObject> {
                     if (byteBuffer != null) {
                         tryCatch(() -> subscriber.onNext(byteBuffer),
                                  this::notifyError);
+                        tryCatch(channelContext::read, this::onError);
                     }
                 }
 
