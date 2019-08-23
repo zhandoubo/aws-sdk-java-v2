@@ -168,7 +168,7 @@ public class ForkedHttp2MultiplexCodec extends Http2FrameCodec {
                         Http2ConnectionDecoder decoder,
                         Http2Settings initialSettings,
                         ChannelHandler inboundStreamHandler) {
-        super(encoder, decoder, initialSettings);
+        super(encoder, decoder, initialSettings, false);
         this.inboundStreamHandler = inboundStreamHandler;
     }
 
