@@ -198,8 +198,15 @@ public class ForkedHttp2MultiplexCodecBuilder
     }
 
     @Override
+    public ForkedHttp2MultiplexCodecBuilder decoupleCloseAndGoAway(boolean decoupleCloseAndGoAway) {
+        return super.decoupleCloseAndGoAway(decoupleCloseAndGoAway);
+    }
+
+    @Override
     protected ForkedHttp2MultiplexCodec build(
         Http2ConnectionDecoder decoder, Http2ConnectionEncoder encoder, Http2Settings initialSettings) {
-        return new ForkedHttp2MultiplexCodec(encoder, decoder, initialSettings, childHandler);
+        ForkedHttp2MultiplexCodec codec = new ForkedHttp2MultiplexCodec(encoder, decoder, initialSettings, childHandler, decoupleCloseAndGoAway());
+        codec.gracefulShutdownTimeoutMillis(gracefulShutdownTimeoutMillis());
+        return codec;
     }
 }
