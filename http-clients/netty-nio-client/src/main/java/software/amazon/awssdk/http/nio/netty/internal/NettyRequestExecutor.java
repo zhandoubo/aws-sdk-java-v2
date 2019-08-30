@@ -184,14 +184,14 @@ public final class NettyRequestExecutor {
     }
 
     private void writeRequest(HttpRequest request) {
-        channel.pipeline().addFirst(new WriteTimeoutHandler(context.configuration().writeTimeoutMillis(),
-                                                            TimeUnit.MILLISECONDS));
+//        channel.pipeline().addFirst(new WriteTimeoutHandler(context.configuration().writeTimeoutMillis(),
+//                                                            TimeUnit.MILLISECONDS));
         StreamedRequest streamedRequest = new StreamedRequest(request,
                                                               context.executeRequest().requestContentPublisher());
         channel.writeAndFlush(streamedRequest)
                .addListener(wireCall -> {
                    // Done writing so remove the idle write timeout handler
-                   ChannelUtils.removeIfExists(channel.pipeline(), WriteTimeoutHandler.class);
+//                   ChannelUtils.removeIfExists(channel.pipeline(), WriteTimeoutHandler.class);
                    if (wireCall.isSuccess()) {
                        if (context.executeRequest().fullDuplex()) {
                            return;
