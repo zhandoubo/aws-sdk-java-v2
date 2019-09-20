@@ -268,8 +268,7 @@ public abstract class SdkDefaultClientBuilder<B extends SdkClientBuilder<B, C>, 
      */
     private Executor resolveAsyncFutureCompletionExecutor(SdkClientConfiguration config) {
         Supplier<Executor> defaultExecutor = () -> {
-            int processors = Runtime.getRuntime().availableProcessors();
-            ThreadPoolExecutor executor = new ThreadPoolExecutor(processors, processors * 2,
+            ThreadPoolExecutor executor = new ThreadPoolExecutor(50, 50,
                                                                  10, TimeUnit.SECONDS,
                                                                  new LinkedBlockingQueue<>(10_000),
                                                                  new ThreadFactoryBuilder()
