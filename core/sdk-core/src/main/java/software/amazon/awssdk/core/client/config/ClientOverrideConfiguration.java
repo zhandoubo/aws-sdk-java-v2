@@ -25,10 +25,13 @@ import java.util.Optional;
 import java.util.TreeMap;
 import java.util.function.Consumer;
 import software.amazon.awssdk.annotations.SdkPublicApi;
+import software.amazon.awssdk.core.client.builder.SdkClientBuilder;
 import software.amazon.awssdk.core.interceptor.ExecutionInterceptor;
 import software.amazon.awssdk.core.retry.RetryMode;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
+import software.amazon.awssdk.profiles.ProfileFile;
+import software.amazon.awssdk.profiles.ProfileFileSystemSetting;
 import software.amazon.awssdk.utils.AttributeMap;
 import software.amazon.awssdk.utils.CollectionUtils;
 import software.amazon.awssdk.utils.ToString;
@@ -51,6 +54,8 @@ public final class ClientOverrideConfiguration
     private final AttributeMap advancedOptions;
     private final Duration apiCallAttemptTimeout;
     private final Duration apiCallTimeout;
+    private final ProfileFile profileFile;
+    private final String profileName;
 
     /**
      * Initialize this configuration. Private to require use of {@link #builder()}.
@@ -62,6 +67,8 @@ public final class ClientOverrideConfiguration
         this.advancedOptions = builder.advancedOptions();
         this.apiCallTimeout = Validate.isPositiveOrNull(builder.apiCallTimeout(), "apiCallTimeout");
         this.apiCallAttemptTimeout = Validate.isPositiveOrNull(builder.apiCallAttemptTimeout(), "apiCallAttemptTimeout");
+        this.profileFile = builder.profileFile();
+        this.profileName = builder.profileName();
     }
 
     @Override
@@ -158,6 +165,24 @@ public final class ClientOverrideConfiguration
         return Optional.ofNullable(apiCallAttemptTimeout);
     }
 
+    /**
+     * The profile file that should be used by default for all profile-based configuration in the SDK client.
+     *
+     * @see Builder#profileFile(ProfileFile)
+     */
+    public Optional<ProfileFile> profileFile() {
+        return Optional.ofNullable(profileFile);
+    }
+
+    /**
+     * The profile name that should be used by default for all profile-based configuration in the SDK client.
+     *
+     * @see Builder#profileName(String)
+     */
+    public Optional<String> profileName() {
+        return Optional.ofNullable(profileName);
+    }
+
     @Override
     public String toString() {
         return ToString.builder("ClientOverrideConfiguration")
@@ -167,6 +192,8 @@ public final class ClientOverrideConfiguration
                        .add("apiCallAttemptTimeout", apiCallAttemptTimeout)
                        .add("executionInterceptors", executionInterceptors)
                        .add("advancedOptions", advancedOptions)
+                       .add("profileFile", profileFile)
+                       .add("profileName", profileName)
                        .build();
     }
 
@@ -341,6 +368,42 @@ public final class ClientOverrideConfiguration
         Builder apiCallAttemptTimeout(Duration apiCallAttemptTimeout);
 
         Duration apiCallAttemptTimeout();
+
+        /**
+         * Configure the profile file that should be used by default for all profile-based configuration in the SDK client.
+         *
+         * <p>This is equivalent to setting the {@link ProfileFileSystemSetting#AWS_CONFIG_FILE} and
+         * {@link ProfileFileSystemSetting#AWS_SHARED_CREDENTIALS_FILE} environment variables or system properties.
+         *
+         * <p>Like the system settings, this value is only used when determining default values. For example, directly configuring
+         * the retry policy, credentials provider or region will mean that the configured values will be used instead of those
+         * from the profile file.
+         *
+         * <p>If this is not set, the {@link ProfileFile#defaultProfileFile()} is used.
+         *
+         * @see #profileName(String)
+         */
+        Builder profileFile(ProfileFile profileFile);
+
+        ProfileFile profileFile();
+
+        /**
+         * Configure the profile name that should be used by default for all profile-based configuration in the SDK client.
+         *
+         * <p>This is equivalent to setting the {@link ProfileFileSystemSetting#AWS_PROFILE} environment variable or system
+         * property.
+         *
+         * <p>Like the system setting, this value is only used when determining default values. For example, directly configuring
+         * the retry policy, credentials provider or region will mean that the configured values will be used instead of those
+         * from this profile.
+         *
+         * <p>If this is not set, the {@link ProfileFileSystemSetting#AWS_PROFILE} (or {@code "default"}) is used.
+         *
+         * @see #profileFile(ProfileFile)
+         */
+        Builder profileName(String profileName);
+
+        String profileName();
     }
 
     /**
@@ -353,6 +416,8 @@ public final class ClientOverrideConfiguration
         private AttributeMap.Builder advancedOptions = AttributeMap.builder();
         private Duration apiCallTimeout;
         private Duration apiCallAttemptTimeout;
+        private ProfileFile profileFile;
+        private String profileName;
 
         @Override
         public Builder headers(Map<String, List<String>> headers) {
@@ -470,6 +535,28 @@ public final class ClientOverrideConfiguration
         @Override
         public Duration apiCallAttemptTimeout() {
             return apiCallAttemptTimeout;
+        }
+
+        @Override
+        public ProfileFile profileFile() {
+            return this.profileFile;
+        }
+
+        @Override
+        public Builder profileFile(ProfileFile profileFile) {
+            this.profileFile = profileFile;
+            return this;
+        }
+
+        @Override
+        public String profileName() {
+            return this.profileName;
+        }
+
+        @Override
+        public Builder profileName(String profileName) {
+            this.profileName = profileName;
+            return this;
         }
 
         @Override
