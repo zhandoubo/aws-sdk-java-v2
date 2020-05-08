@@ -15,19 +15,9 @@
 
 package software.amazon.awssdk.core.internal.metrics;
 
-import java.util.Optional;
+import java.time.Instant;
 
-public interface SdkMetricContext<T> {
-    SdkMetricType<T> type();
-
-    String identifier();
-
-    static <T> SdkMetricContext<T> create(SdkMetricType<T> type) {
-        // Call other create with random UUID identifier
-        throw new UnsupportedOperationException();
-    }
-
-    static <T> SdkMetricContext<T> create(SdkMetricType<T> type, String identifier) {
-        throw new UnsupportedOperationException();
-    }
+public interface SdkDurationMetric {
+    Instant startTime();
+    Instant endTime();
 }

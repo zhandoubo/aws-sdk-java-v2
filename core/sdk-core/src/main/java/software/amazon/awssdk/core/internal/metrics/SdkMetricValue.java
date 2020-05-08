@@ -15,10 +15,6 @@
 
 package software.amazon.awssdk.core.internal.metrics;
 
-public class SdkMetricTypes {
-    public static SdkMetricType<SdkMetricCollection> EXECUTION = SdkMetricType.create("Execution");
-
-    public static SdkMetricType<SdkMetricCollection> EXECUTION_ATTEMPT = SdkMetricType.create("ExecutionAttempt");
-
-    public static SdkMetricType<Long> BYTES_SENT = SdkMetricType.create("BytesSent");
+public interface SdkMetricValue<T> {
+    T value();
 }

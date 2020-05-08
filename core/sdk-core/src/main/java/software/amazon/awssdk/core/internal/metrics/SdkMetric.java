@@ -15,12 +15,23 @@
 
 package software.amazon.awssdk.core.internal.metrics;
 
-import java.time.Instant;
+public class SdkMetric<T> {
+    private final String name;
 
-public interface SdkMetric<T> {
-    SdkMetricContext<T> context();
+    private SdkMetric(String name) {
+        this.name = name;
+    }
 
-    T value();
+    public static <T> SdkMetric<T> create(String name) {
+        return new SdkMetric<>(name);
+    }
 
-    Instant timestamp();
+    public String name() {
+        return this.name;
+    }
+
+    @Override
+    public String toString() {
+        return this.name;
+    }
 }

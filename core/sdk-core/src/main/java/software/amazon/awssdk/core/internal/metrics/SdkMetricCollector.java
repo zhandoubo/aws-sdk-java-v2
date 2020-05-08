@@ -15,27 +15,16 @@
 
 package software.amazon.awssdk.core.internal.metrics;
 
-import org.reactivestreams.Publisher;
 import software.amazon.awssdk.annotations.ThreadSafe;
 
 @ThreadSafe
-public interface SdkMetricCollector extends AutoCloseable {
-    <T> void reportMetric(SdkMetricType<T> type, T value);
+public interface SdkMetricCollector {
 
-    default void reportMetric(SdkMetricType<Void> type) {
-        reportMetric(type, null);
-    }
+    <T> void reportMetric(SdkMetric<T> type, T value);
 
-    SdkMetricCollector createChild(SdkMetricContext<SdkMetricCollection> childContext);
-
-    static SdkMetricCollector create(SdkMetricContext<SdkMetricCollection> parentContext) {
+    static SdkMetricCollector create() {
         throw new UnsupportedOperationException();
     }
 
-    SdkMetricContext<SdkMetricCollector> context();
-
-    Publisher<SdkMetricCollection> publisher();
-
-    @Override
-    void close();
+    SdkMetricCollection collect();
 }

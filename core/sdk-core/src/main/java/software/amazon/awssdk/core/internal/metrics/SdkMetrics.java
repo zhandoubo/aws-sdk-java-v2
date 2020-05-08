@@ -15,10 +15,8 @@
 
 package software.amazon.awssdk.core.internal.metrics;
 
-import java.util.List;
-
-public interface SdkMetricCollection {
-    SdkMetricValue<?> metrics();
-
-    <T> List<SdkMetricValue<T>> query(SdkMetric<T> type);
+public final class SdkMetrics {
+    public static final SdkMetric<Long> BYTES_SENT = SdkMetric.create("BytesSent");
+    public static final SdkMetric<SdkDurationMetric> EXECUTION_DURATION = SdkMetric.create("ExecutionDuration");
+    public static final SdkMetric<SdkDurationMetric> EXECUTION_ATTEMPT_DURATION = SdkMetric.create("ExecutionAttemptDuration");
 }

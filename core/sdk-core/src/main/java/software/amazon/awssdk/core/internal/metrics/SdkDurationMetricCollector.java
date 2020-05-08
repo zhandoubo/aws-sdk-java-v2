@@ -15,23 +15,10 @@
 
 package software.amazon.awssdk.core.internal.metrics;
 
-public class SdkMetricType<T> {
-    private final String name;
+import software.amazon.awssdk.utils.SdkAutoCloseable;
 
-    private SdkMetricType(String name) {
-        this.name = name;
-    }
-
-    public static <T> SdkMetricType<T> create(String name) {
-        return new SdkMetricType<>(name);
-    }
-
-    public String name() {
-        return this.name;
-    }
-
-    @Override
-    public String toString() {
-        return this.name;
+public interface SdkDurationMetricCollector extends SdkAutoCloseable {
+    static SdkDurationMetricCollector create(SdkMetric<SdkDurationMetric> metric, SdkMetricCollector collectorToPublishTo) {
+        throw new UnsupportedOperationException();
     }
 }
