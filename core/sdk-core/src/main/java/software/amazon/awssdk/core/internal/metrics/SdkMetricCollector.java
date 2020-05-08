@@ -22,9 +22,11 @@ public interface SdkMetricCollector {
 
     <T> void reportMetric(SdkMetric<T> type, T value);
 
-    static SdkMetricCollector create() {
+    static SdkMetricCollector create(String name) {
         throw new UnsupportedOperationException();
     }
+
+    SdkMetricCollector createChild(String childName);
 
     SdkMetricCollection collect();
 }

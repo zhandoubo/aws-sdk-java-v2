@@ -16,6 +16,7 @@
 package software.amazon.awssdk.core.internal.metrics;
 
 
+import java.util.List;
 import java.util.function.Consumer;
 import org.junit.runner.RunWith;
 import org.mockito.runners.MockitoJUnitRunner;
@@ -30,23 +31,37 @@ public class MetricsFunctionalTest {
         }
 
         public void execute() {
-            SdkMetricCollector metricsCollector = SdkMetricCollector.create();
+            SdkMetricCollector executionMetrics = SdkMetricCollector.create("Execution");
 
             try (SdkDurationMetricCollector executionDuration =
-                     SdkDurationMetricCollector.create(SdkMetrics.EXECUTION_DURATION, metricsCollector)) {
+                     SdkDurationMetricCollector.create(SdkMetrics.EXECUTION_DURATION, executionMetrics)) {
                 for (int i = 1; i <= 3; ++i) {
-                    attemptExecution(i, metricsCollector);
+                    attemptExecution(i, executionMetrics.createChild("Attempt" + i));
                 }
             }
 
-            metricSubscriber.accept(metricsCollector.collect());
+            SdkMetricCollection metricsCollection = executionMetrics.collect();
+            
+            metricSubscriber.accept(metricsCollection);
         }
 
-        private void attemptExecution(int attemptNumber, SdkMetricCollector metricsCollector) {
+        private void attemptExecution(int attemptNumber, SdkMetricCollector attemptMetrics) {
             try (SdkDurationMetricCollector attemptDuration =
-                     SdkDurationMetricCollector.create(SdkMetrics.EXECUTION_ATTEMPT_DURATION, metricsCollector)) {
-                metricsCollector.reportMetric(SdkMetrics.BYTES_SENT, 1234L);
+                     SdkDurationMetricCollector.create(SdkMetrics.EXECUTION_ATTEMPT_DURATION, attemptMetrics)) {
+                attemptMetrics.reportMetric(SdkMetrics.BYTES_SENT, 1234L);
             }
+        }
+    }
+
+    public static class ExampleSubscriber implements Consumer<SdkMetricCollection> {
+        @Override
+        public void accept(SdkMetricCollection sdkMetricCollection) {
+            List<SdkMetricValue<Long>> sentBytes = sdkMetricCollection.query(SdkMetrics.BYTES_SENT);
+
+            // Prints [SdkMetricValue(name = Execution.Attempt1.BytesSent, value = 1234),
+            //         SdkMetricValue(name = Execution.Attempt2.BytesSent, value = 1234),
+            //         SdkMetricValue(name = Execution.Attempt3.BytesSent, value = 1234)]
+            System.out.println(sentBytes);
         }
     }
 }

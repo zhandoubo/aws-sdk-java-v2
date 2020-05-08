@@ -16,5 +16,6 @@
 package software.amazon.awssdk.core.internal.metrics;
 
 public interface SdkMetricValue<T> {
+    String name();
     T value();
 }
