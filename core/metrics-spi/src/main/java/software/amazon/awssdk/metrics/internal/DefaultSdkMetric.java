@@ -40,7 +40,8 @@ public final class DefaultSdkMetric<T> extends AttributeMap.Key<T> implements Sd
         super(clzz);
         this.name = Validate.notBlank(name, "name must not be blank");
         this.clzz = Validate.notNull(clzz, "clzz must not be null");
-        this.categories = Validate.notEmpty(EnumSet.copyOf(categories), "categories must not be empty");
+       Validate.notEmpty(categories, "categories must not be empty");
+       this.categories = EnumSet.copyOf(categories);
     }
 
     /**
