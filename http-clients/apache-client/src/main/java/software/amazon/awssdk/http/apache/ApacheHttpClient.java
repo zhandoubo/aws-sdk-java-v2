@@ -18,6 +18,11 @@ package software.amazon.awssdk.http.apache;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.toList;
+import static software.amazon.awssdk.http.HttpMetrics.AVAILABLE_POOLED_CONNECTIONS;
+import static software.amazon.awssdk.http.HttpMetrics.HTTP_CLIENT_NAME;
+import static software.amazon.awssdk.http.HttpMetrics.LEASED_CONNECTIONS;
+import static software.amazon.awssdk.http.HttpMetrics.MAX_POOLED_CONNECTIONS;
+import static software.amazon.awssdk.http.HttpMetrics.PENDING_REQUESTS;
 import static software.amazon.awssdk.utils.NumericUtils.saturatedCast;
 
 import java.io.IOException;
@@ -57,6 +62,7 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.DefaultSchemePortResolver;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.pool.PoolStats;
 import org.apache.http.protocol.HttpRequestExecutor;
 import software.amazon.awssdk.annotations.SdkPublicApi;
 import software.amazon.awssdk.annotations.SdkTestInternalApi;
@@ -64,6 +70,7 @@ import software.amazon.awssdk.http.AbortableInputStream;
 import software.amazon.awssdk.http.ExecutableHttpRequest;
 import software.amazon.awssdk.http.HttpExecuteRequest;
 import software.amazon.awssdk.http.HttpExecuteResponse;
+import software.amazon.awssdk.http.HttpMetrics;
 import software.amazon.awssdk.http.SdkHttpClient;
 import software.amazon.awssdk.http.SdkHttpConfigurationOption;
 import software.amazon.awssdk.http.SdkHttpResponse;
@@ -81,6 +88,8 @@ import software.amazon.awssdk.http.apache.internal.impl.ApacheHttpRequestFactory
 import software.amazon.awssdk.http.apache.internal.impl.ApacheSdkHttpClient;
 import software.amazon.awssdk.http.apache.internal.impl.ConnectionManagerAwareHttpClient;
 import software.amazon.awssdk.http.apache.internal.utils.ApacheUtils;
+import software.amazon.awssdk.http.apache.internal.NoOpMetricCollector;
+import software.amazon.awssdk.metrics.MetricCollector;
 import software.amazon.awssdk.utils.AttributeMap;
 import software.amazon.awssdk.utils.Logger;
 import software.amazon.awssdk.utils.Validate;
@@ -206,11 +215,14 @@ public final class ApacheHttpClient implements SdkHttpClient {
 
     @Override
     public ExecutableHttpRequest prepareRequest(HttpExecuteRequest request) {
+        final MetricCollector metricCollector = request.metricCollector().orElseGet(NoOpMetricCollector::new);
+        metricCollector.reportMetric(HTTP_CLIENT_NAME, clientName());
         HttpRequestBase apacheRequest = toApacheRequest(request);
         return new ExecutableHttpRequest() {
             @Override
             public HttpExecuteResponse call() throws IOException {
-                return execute(apacheRequest);
+                final HttpExecuteResponse executeResponse = execute(apacheRequest);
+                collectPoolMetric(metricCollector);
             }
 
             @Override
@@ -281,6 +293,18 @@ public final class ApacheHttpClient implements SdkHttpClient {
                                       .expectContinueEnabled(Optional.ofNullable(builder.expectContinueEnabled)
                                                                      .orElse(DefaultConfiguration.EXPECT_CONTINUE_ENABLED))
                                       .build();
+    }
+
+    private void collectPoolMetric(MetricCollector metricCollector) {
+        HttpClientConnectionManager cm = httpClient.getHttpClientConnectionManager();
+        if (cm instanceof PoolingHttpClientConnectionManager) {
+            PoolingHttpClientConnectionManager poolingCm = (PoolingHttpClientConnectionManager) cm;
+            PoolStats totalStats = poolingCm.getTotalStats();
+            metricCollector.reportMetric(MAX_POOLED_CONNECTIONS, totalStats.getMax());
+            metricCollector.reportMetric(AVAILABLE_POOLED_CONNECTIONS, totalStats.getAvailable());
+            metricCollector.reportMetric(LEASED_CONNECTIONS, totalStats.getLeased());
+            metricCollector.reportMetric(PENDING_REQUESTS, totalStats.getPending());
+        }
     }
 
     @Override
