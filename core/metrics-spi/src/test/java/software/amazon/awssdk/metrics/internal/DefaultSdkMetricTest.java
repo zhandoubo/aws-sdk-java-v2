@@ -37,7 +37,7 @@ public class DefaultSdkMetricTest {
 
     @Test
     public void testOf_variadicOverload_createdProperly() {
-        SdkMetric<Integer> event = SdkMetric.of("event", Integer.class, MetricCategory.DEFAULT);
+        SdkMetric<Integer> event = SdkMetric.create("event", Integer.class, MetricCategory.DEFAULT);
 
         assertThat(event.categories()).containsExactly(MetricCategory.DEFAULT);
         assertThat(event.name()).isEqualTo("event");
@@ -46,7 +46,7 @@ public class DefaultSdkMetricTest {
 
     @Test
     public void testOf_setOverload_createdProperly() {
-        SdkMetric<Integer> event = SdkMetric.of("event", Integer.class, Stream.of(MetricCategory.DEFAULT)
+        SdkMetric<Integer> event = SdkMetric.create("event", Integer.class, Stream.of(MetricCategory.DEFAULT)
                 .collect(Collectors.toSet()));
 
         assertThat(event.categories()).containsExactly(MetricCategory.DEFAULT);
@@ -58,33 +58,33 @@ public class DefaultSdkMetricTest {
     public void testOf_variadicOverload_c1Null_throws() {
         thrown.expect(IllegalArgumentException.class);
         thrown.expectMessage("must not contain null elements");
-        SdkMetric.of("event", Integer.class, (MetricCategory) null);
+        SdkMetric.create("event", Integer.class, (MetricCategory) null);
     }
 
     @Test
     public void testOf_variadicOverload_c1NotNull_cnNull_doesNotThrow() {
-        SdkMetric.of("event", Integer.class, MetricCategory.DEFAULT, null);
+        SdkMetric.create("event", Integer.class, MetricCategory.DEFAULT, null);
     }
 
     @Test
     public void testOf_variadicOverload_cnContainsNull_throws() {
         thrown.expect(IllegalArgumentException.class);
         thrown.expectMessage("must not contain null elements");
-        SdkMetric.of("event", Integer.class, MetricCategory.DEFAULT, new MetricCategory[]{ null });
+        SdkMetric.create("event", Integer.class, MetricCategory.DEFAULT, new MetricCategory[]{ null });
     }
 
     @Test
     public void testOf_setOverload_null_throws() {
         thrown.expect(NullPointerException.class);
         thrown.expectMessage("object is null");
-        SdkMetric.of("event", Integer.class, (Set<MetricCategory>) null);
+        SdkMetric.create("event", Integer.class, (Set<MetricCategory>) null);
     }
 
     @Test
     public void testOf_setOverload_nullElement_throws() {
         thrown.expect(IllegalArgumentException.class);
         thrown.expectMessage("categories must not contain null elements");
-        SdkMetric.of("event", Integer.class, Stream.of((MetricCategory) null).collect(Collectors.toSet()));
+        SdkMetric.create("event", Integer.class, Stream.of((MetricCategory) null).collect(Collectors.toSet()));
     }
 
     @Test
@@ -94,8 +94,8 @@ public class DefaultSdkMetricTest {
         thrown.expect(IllegalArgumentException.class);
         thrown.expectMessage(fooName + " has already been created");
 
-        SdkMetric.of(fooName, Integer.class, MetricCategory.DEFAULT);
-        SdkMetric.of(fooName, Integer.class, MetricCategory.DEFAULT);
+        SdkMetric.create(fooName, Integer.class, MetricCategory.DEFAULT);
+        SdkMetric.create(fooName, Integer.class, MetricCategory.DEFAULT);
     }
 
     @Test
@@ -105,8 +105,8 @@ public class DefaultSdkMetricTest {
         thrown.expect(IllegalArgumentException.class);
         thrown.expectMessage(fooName + " has already been created");
 
-        SdkMetric.of(fooName, Integer.class, MetricCategory.DEFAULT);
-        SdkMetric.of(fooName, Long.class, MetricCategory.STREAMING);
+        SdkMetric.create(fooName, Integer.class, MetricCategory.DEFAULT);
+        SdkMetric.create(fooName, Long.class, MetricCategory.STREAMING);
     }
 
     @Test
@@ -116,9 +116,9 @@ public class DefaultSdkMetricTest {
         thrown.expect(IllegalArgumentException.class);
         thrown.expectMessage(fooName + " has already been created");
 
-        SdkMetric.of(fooName, Integer.class, MetricCategory.DEFAULT);
+        SdkMetric.create(fooName, Integer.class, MetricCategory.DEFAULT);
         try {
-            SdkMetric.of(fooName, Long.class, MetricCategory.STREAMING);
+            SdkMetric.create(fooName, Long.class, MetricCategory.STREAMING);
         } finally {
             SdkMetric<?> fooMetric = DefaultSdkMetric.declaredEvents()
                 .stream()

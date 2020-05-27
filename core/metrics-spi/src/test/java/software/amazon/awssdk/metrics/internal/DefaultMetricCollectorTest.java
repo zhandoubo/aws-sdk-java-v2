@@ -27,7 +27,7 @@ import software.amazon.awssdk.metrics.MetricCollector;
 import software.amazon.awssdk.metrics.SdkMetric;
 
 public class DefaultMetricCollectorTest {
-    private static final SdkMetric<Integer> M1 = SdkMetric.of("m1", Integer.class, MetricCategory.DEFAULT);
+    private static final SdkMetric<Integer> M1 = SdkMetric.create("m1", Integer.class, MetricCategory.DEFAULT);
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();
@@ -72,6 +72,7 @@ public class DefaultMetricCollectorTest {
     @Test
     public void testReportMetric_collected_throws() {
         thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("This collector has already been closed");
 
         MetricCollector collector = MetricCollector.create("collector");
         collector.collect();

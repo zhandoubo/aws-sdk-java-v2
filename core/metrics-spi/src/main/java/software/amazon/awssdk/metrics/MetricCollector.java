@@ -20,7 +20,7 @@ import software.amazon.awssdk.annotations.SdkPublicApi;
 import software.amazon.awssdk.metrics.internal.DefaultMetricCollector;
 
 /**
- * Used to collect metrics collected by the SDK.
+ * Used to collect metrics reported by the SDK.
  */
 @NotThreadSafe
 @SdkPublicApi
@@ -36,6 +36,7 @@ public interface MetricCollector {
     <T> void reportMetric(SdkMetric<T> metric, T data);
 
     /**
+     * Create a child of this metric collector.
      *
      * @param name The name of the child collector.
      * @return The child collector.

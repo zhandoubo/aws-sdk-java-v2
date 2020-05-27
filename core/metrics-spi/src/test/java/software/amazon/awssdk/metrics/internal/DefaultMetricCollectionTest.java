@@ -31,7 +31,7 @@ import software.amazon.awssdk.metrics.MetricRecord;
 import software.amazon.awssdk.metrics.SdkMetric;
 
 public class DefaultMetricCollectionTest {
-    private static final SdkMetric<Integer> M1 = SdkMetric.of("m1", Integer.class, MetricCategory.DEFAULT);
+    private static final SdkMetric<Integer> M1 = SdkMetric.create("m1", Integer.class, MetricCategory.DEFAULT);
 
     @AfterClass
     public static void teardown() {

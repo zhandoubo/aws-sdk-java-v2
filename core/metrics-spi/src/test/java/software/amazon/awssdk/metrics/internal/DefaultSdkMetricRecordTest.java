@@ -27,7 +27,7 @@ import software.amazon.awssdk.metrics.MetricRecord;
 public class DefaultSdkMetricRecordTest {
     @Test
     public void testGetters() {
-        SdkMetric<Integer> event = SdkMetric.of("foo", Integer.class, MetricCategory.DEFAULT);
+        SdkMetric<Integer> event = SdkMetric.create("foo", Integer.class, MetricCategory.DEFAULT);
 
         MetricRecord<Integer> record = new DefaultMetricRecord<>(event, 2);
 

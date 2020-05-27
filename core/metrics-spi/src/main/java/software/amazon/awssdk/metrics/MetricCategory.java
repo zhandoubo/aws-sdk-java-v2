@@ -30,17 +30,17 @@ public enum MetricCategory {
      * All metrics defined by the SDK are classified under this category at a minimum. If the metrics feature is enabled
      * but the category to collect is not, only metrics that are classified under this category are collected by the SDK
      */
-    DEFAULT("default"),
+    DEFAULT("Default"),
 
     /**
      * Metrics collected at the http client level are classified under this category.
      */
-    HTTP_CLIENT("httpclient"),
+    HTTP_CLIENT("HttpClient"),
 
     /**
      * Metrics specific to streaming, eventStream APIs are classified under this category.
      */
-    STREAMING("streaming"),
+    STREAMING("Streaming"),
 
     /**
      * This is an umbrella category (provided for convenience) that records metrics belonging to every category
@@ -49,7 +49,7 @@ public enum MetricCategory {
      * Note: Enabling this option is verbose and can be expensive based on the platform the metrics are uploaded to.
      * Please make sure you need all this data before using this category.
      */
-    ALL("all")
+    ALL("All")
 
     ;
 

@@ -97,13 +97,13 @@ public final class DefaultSdkMetric<T> extends AttributeMap.Key<T> implements Sd
      *
      * @throws IllegalArgumentException If a metric of the same name has already been created.
      */
-    public static <T> SdkMetric<T> of(String name, Class<T> clzz, MetricCategory c1, MetricCategory... cn) {
+    public static <T> SdkMetric<T> create(String name, Class<T> clzz, MetricCategory c1, MetricCategory... cn) {
         Stream<MetricCategory> categoryStream = Stream.of(c1);
         if (cn != null) {
             categoryStream = Stream.concat(categoryStream, Stream.of(cn));
         }
         Set<MetricCategory> categories = categoryStream.collect(Collectors.toSet());
-        return of(name, clzz, categories);
+        return create(name, clzz, categories);
     }
 
     /**
@@ -117,7 +117,7 @@ public final class DefaultSdkMetric<T> extends AttributeMap.Key<T> implements Sd
      *
      * @throws IllegalArgumentException If a metric of the same name has already been created.
      */
-    public static <T> SdkMetric<T> of(String name, Class<T> clzz, Set<MetricCategory> categories) {
+    public static <T> SdkMetric<T> create(String name, Class<T> clzz, Set<MetricCategory> categories) {
         Validate.noNullElements(categories, "categories must not contain null elements");
         SdkMetric<T> event = new DefaultSdkMetric<>(name, clzz, categories);
         if (SDK_METRICS.putIfAbsent(event, Boolean.TRUE) != null) {
