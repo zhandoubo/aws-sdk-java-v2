@@ -15,6 +15,7 @@
 
 package software.amazon.awssdk.metrics;
 
+import java.time.Instant;
 import java.util.List;
 import software.amazon.awssdk.annotations.SdkPublicApi;
 
@@ -41,4 +42,6 @@ public interface MetricCollection extends Iterable<MetricRecord<?>> {
      * @return The child metric collections.
      */
     List<MetricCollection> children();
+
+    Instant creationTime();
 }
