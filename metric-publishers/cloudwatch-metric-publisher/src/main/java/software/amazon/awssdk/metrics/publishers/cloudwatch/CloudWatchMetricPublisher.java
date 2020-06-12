@@ -38,7 +38,7 @@ import software.amazon.awssdk.metrics.MetricCollection;
 import software.amazon.awssdk.metrics.MetricPublisher;
 import software.amazon.awssdk.metrics.SdkMetric;
 import software.amazon.awssdk.metrics.publishers.cloudwatch.internal.CloudWatchUploader;
-import software.amazon.awssdk.metrics.publishers.cloudwatch.internal.MetricCollectionTransformer;
+import software.amazon.awssdk.metrics.publishers.cloudwatch.internal.transform.MetricCollectionTransformer;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
 import software.amazon.awssdk.utils.ThreadFactoryBuilder;
 
