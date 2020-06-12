@@ -15,6 +15,8 @@
 
 package software.amazon.awssdk.metrics.publishers.cloudwatch;
 
+import static java.util.Collections.singletonList;
+
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,6 +24,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import software.amazon.awssdk.annotations.SdkPublicApi;
@@ -30,8 +37,10 @@ import software.amazon.awssdk.metrics.MetricCategory;
 import software.amazon.awssdk.metrics.MetricCollection;
 import software.amazon.awssdk.metrics.MetricPublisher;
 import software.amazon.awssdk.metrics.SdkMetric;
-import software.amazon.awssdk.metrics.publishers.cloudwatch.internal.MetricConsumer;
+import software.amazon.awssdk.metrics.publishers.cloudwatch.internal.CloudWatchUploader;
+import software.amazon.awssdk.metrics.publishers.cloudwatch.internal.MetricCollectionTransformer;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
+import software.amazon.awssdk.utils.ThreadFactoryBuilder;
 
 /**
  * An implementation of {@link MetricPublisher} that uploads metrics to Amazon CloudWatch.
@@ -48,17 +57,30 @@ public final class CloudWatchMetricPublisher implements MetricPublisher {
     private static final Set<SdkMetric<?>> DEFAULT_NON_SUMMARY_METRICS = Collections.emptySet();
 
     private final boolean closeClientWithPublisher;
-    private final MetricConsumer metricConsumer;
+    private final CloudWatchUploader cloudWatchUploader;
+    private final MetricCollectionTransformer metricTransformer;
+    private final ScheduledExecutorService scheduledExecutor;
+    private final ExecutorService executor;
 
     private CloudWatchMetricPublisher(Builder builder) {
         this.closeClientWithPublisher = resolveCloseClientWithPublisher(builder);
-        this.metricConsumer = new MetricConsumer(resolveClient(builder),
-                                                 resolveMetricQueueSize(builder),
-                                                 resolveDimensions(builder),
-                                                 resolveMetricCategories(builder),
-                                                 resolveNonSummaryMetrics(builder),
-                                                 resolveNamespace(builder),
-                                                 resolvePublishFrequency(builder));
+        this.metricTransformer = new MetricCollectionTransformer(resolveNamespace(builder),
+                                                                 resolveDimensions(builder),
+                                                                 resolveMetricCategories(builder),
+                                                                 resolveNonSummaryMetrics(builder));
+        this.cloudWatchUploader = new CloudWatchUploader(resolveClient(builder),
+                                                         resolveMetricQueueSize(builder));
+
+        ThreadFactory threadFactory = new ThreadFactoryBuilder().threadNamePrefix("cloud-watch-metric-publisher").build();
+
+        this.scheduledExecutor = Executors.newSingleThreadScheduledExecutor(threadFactory);
+        this.executor = Executors.newSingleThreadExecutor(threadFactory);
+
+        long publishFrequencyInMillis = resolvePublishFrequency(builder).toMillis();
+        this.scheduledExecutor.scheduleAtFixedRate(cloudWatchUploader::flushUploadQueue,
+                                                   publishFrequencyInMillis,
+                                                   publishFrequencyInMillis,
+                                                   TimeUnit.MILLISECONDS);
     }
 
     private Set<MetricCategory> resolveMetricCategories(Builder builder) {
@@ -95,12 +117,15 @@ public final class CloudWatchMetricPublisher implements MetricPublisher {
 
     @Override
     public void publish(MetricCollection metricCollection) {
-        metricConsumer.publish(metricCollection);
+        executor.submit(() -> metricTransformer.transform(singletonList(metricCollection))
+                                               .forEach(cloudWatchUploader::addToUploadQueue));
     }
 
     @Override
     public void close() {
-        metricConsumer.close(closeClientWithPublisher);
+        executor.shutdownNow();
+        scheduledExecutor.shutdownNow();
+        cloudWatchUploader.close(closeClientWithPublisher);
     }
 
     /**
