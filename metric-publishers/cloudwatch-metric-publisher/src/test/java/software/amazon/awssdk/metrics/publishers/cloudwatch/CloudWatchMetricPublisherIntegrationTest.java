@@ -16,8 +16,10 @@
 package software.amazon.awssdk.metrics.publishers.cloudwatch;
 
 import java.time.Duration;
+import java.util.concurrent.ThreadLocalRandom;
 import org.junit.Test;
 import software.amazon.awssdk.core.metrics.CoreMetric;
+import software.amazon.awssdk.http.Http2Metric;
 import software.amazon.awssdk.http.HttpMetric;
 import software.amazon.awssdk.metrics.MetricCollector;
 
@@ -26,7 +28,8 @@ public class CloudWatchMetricPublisherIntegrationTest {
     public void test() throws InterruptedException {
         try (CloudWatchMetricPublisher publisher =
                  CloudWatchMetricPublisher.builder()
-                                          .publishFrequency(Duration.ofSeconds(1))
+                                          .publishFrequency(Duration.ofSeconds(60))
+                                          .metricQueueSize(5_000)
                                           .build()) {
 
             for (int i = 0; i < Integer.MAX_VALUE; ++i) {
@@ -34,9 +37,14 @@ public class CloudWatchMetricPublisherIntegrationTest {
                 MetricCollector collector = MetricCollector.create("test");
                 collector.reportMetric(CoreMetric.SERVICE_ID, "TestService");
                 collector.reportMetric(CoreMetric.OPERATION_NAME, "TestOperation");
-                collector.reportMetric(HttpMetric.MAX_CONCURRENCY, 5);
+                collector.reportMetric(HttpMetric.MAX_CONCURRENCY, ThreadLocalRandom.current().nextInt(0, 10000));
+                collector.reportMetric(HttpMetric.LEASED_CONCURRENCY, ThreadLocalRandom.current().nextInt(0, 10000));
+                collector.reportMetric(HttpMetric.AVAILABLE_CONCURRENCY, ThreadLocalRandom.current().nextInt(0, 10000));
+                collector.reportMetric(HttpMetric.PENDING_CONCURRENCY_ACQUIRES, ThreadLocalRandom.current().nextInt(0, 10000));
+                collector.reportMetric(Http2Metric.LOCAL_STREAM_WINDOW_SIZE_IN_BYTES, ThreadLocalRandom.current().nextInt(0, 10000));
+                collector.reportMetric(Http2Metric.REMOTE_STREAM_WINDOW_SIZE_IN_BYTES, ThreadLocalRandom.current().nextInt(0, 10000));
                 publisher.publish(collector.collect());
-                Thread.sleep(1000);
+                Thread.sleep(10);
             }
         }
     }

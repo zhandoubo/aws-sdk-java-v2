@@ -16,11 +16,17 @@
 package software.amazon.awssdk.metrics.publishers.cloudwatch;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import software.amazon.awssdk.annotations.SdkPublicApi;
 import software.amazon.awssdk.core.metrics.CoreMetric;
+import software.amazon.awssdk.metrics.MetricCategory;
 import software.amazon.awssdk.metrics.MetricCollection;
 import software.amazon.awssdk.metrics.MetricPublisher;
 import software.amazon.awssdk.metrics.SdkMetric;
@@ -37,6 +43,9 @@ public final class CloudWatchMetricPublisher implements MetricPublisher {
     private static final Duration DEFAULT_PUBLISH_FREQUENCY = Duration.ofMinutes(1);
     private static final Set<SdkMetric<String>> DEFAULT_DIMENSIONS = Stream.of(CoreMetric.SERVICE_ID, CoreMetric.OPERATION_NAME)
                                                                            .collect(Collectors.toSet());
+    private static final Set<MetricCategory> DEFAULT_METRIC_CATEGORIES = Stream.of(MetricCategory.DEFAULT, MetricCategory.HTTP_CLIENT)
+                                                                               .collect(Collectors.toSet());
+    private static final Set<SdkMetric<?>> DEFAULT_NON_SUMMARY_METRICS = Collections.emptySet();
 
     private final boolean closeClientWithPublisher;
     private final MetricConsumer metricConsumer;
@@ -46,12 +55,22 @@ public final class CloudWatchMetricPublisher implements MetricPublisher {
         this.metricConsumer = new MetricConsumer(resolveClient(builder),
                                                  resolveMetricQueueSize(builder),
                                                  resolveDimensions(builder),
+                                                 resolveMetricCategories(builder),
+                                                 resolveNonSummaryMetrics(builder),
                                                  resolveNamespace(builder),
                                                  resolvePublishFrequency(builder));
     }
 
+    private Set<MetricCategory> resolveMetricCategories(Builder builder) {
+        return builder.metricCategories == null ? DEFAULT_METRIC_CATEGORIES : new HashSet<>(builder.metricCategories);
+    }
+
+    private Set<SdkMetric<?>> resolveNonSummaryMetrics(Builder builder) {
+        return builder.nonSummaryMetrics == null ? DEFAULT_NON_SUMMARY_METRICS : new HashSet<>(builder.nonSummaryMetrics);
+    }
+
     private Set<SdkMetric<String>> resolveDimensions(Builder builder) {
-        return builder.dimensions == null ? DEFAULT_DIMENSIONS : builder.dimensions;
+        return builder.dimensions == null ? DEFAULT_DIMENSIONS : new HashSet<>(builder.dimensions);
     }
 
     private boolean resolveCloseClientWithPublisher(Builder builder) {
@@ -102,11 +121,13 @@ public final class CloudWatchMetricPublisher implements MetricPublisher {
      * Builder class to construct {@link CloudWatchMetricPublisher} instances.
      */
     public static final class Builder {
-        public Set<SdkMetric<String>> dimensions;
         private CloudWatchAsyncClient client;
         private Duration publishFrequency;
         private String namespace;
         private Integer metricQueueSize;
+        private Collection<SdkMetric<String>> dimensions;
+        private Collection<MetricCategory> metricCategories;
+        private Collection<SdkMetric<?>> nonSummaryMetrics;
 
         private Builder() {
         }
@@ -120,10 +141,6 @@ public final class CloudWatchMetricPublisher implements MetricPublisher {
             return this;
         }
 
-        /**
-         * @param publishFrequency the timeout between consecutive {@link CloudWatchMetricPublisher#publish()} calls
-         * @return This object for method chaining
-         */
         public Builder publishFrequency(Duration publishFrequency) {
             this.publishFrequency = publishFrequency;
             return this;
@@ -145,6 +162,35 @@ public final class CloudWatchMetricPublisher implements MetricPublisher {
         public Builder namespace(String namespace) {
             this.namespace = namespace;
             return this;
+        }
+
+        public Builder dimensions(Collection<SdkMetric<String>> dimensions) {
+            this.dimensions = new ArrayList<>(dimensions);
+            return this;
+        }
+
+        @SafeVarargs
+        public final Builder dimensions(SdkMetric<String>... dimensions) {
+            this.dimensions = Arrays.asList(dimensions);
+            return this;
+        }
+
+        public Builder metricCategories(Collection<MetricCategory> metricCategories) {
+            this.metricCategories = new ArrayList<>(metricCategories);
+            return this;
+        }
+
+        public Builder metricCategories(MetricCategory... metricCategories) {
+            return metricCategories(Arrays.asList(metricCategories));
+        }
+
+        public Builder nonSummaryMetrics(Collection<SdkMetric<?>> nonSummaryMetrics) {
+            this.nonSummaryMetrics = new ArrayList<>(nonSummaryMetrics);
+            return this;
+        }
+
+        public Builder nonSummaryMetrics(SdkMetric<?>... nonSummaryMetrics) {
+            return nonSummaryMetrics(Arrays.asList(nonSummaryMetrics));
         }
 
         /**

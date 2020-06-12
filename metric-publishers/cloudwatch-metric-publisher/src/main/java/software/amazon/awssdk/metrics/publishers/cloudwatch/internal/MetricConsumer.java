@@ -15,13 +15,9 @@
 
 package software.amazon.awssdk.metrics.publishers.cloudwatch.internal;
 
-import static software.amazon.awssdk.metrics.publishers.cloudwatch.internal.CloudWatchMetricLogger.METRIC_LOGGER;
-
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -31,34 +27,32 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
+import software.amazon.awssdk.metrics.MetricCategory;
 import software.amazon.awssdk.metrics.MetricCollection;
-import software.amazon.awssdk.metrics.MetricRecord;
 import software.amazon.awssdk.metrics.SdkMetric;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
-import software.amazon.awssdk.services.cloudwatch.model.Dimension;
-import software.amazon.awssdk.services.cloudwatch.model.MetricDatum;
-import software.amazon.awssdk.services.cloudwatch.model.PutMetricDataRequest;
-import software.amazon.awssdk.services.cloudwatch.model.StandardUnit;
 import software.amazon.awssdk.utils.ThreadFactoryBuilder;
 
 public class MetricConsumer {
+    private final MetricCollectionTransformer transformer;
+
     private final CloudWatchAsyncClient cloudWatchClient;
     private final Queue<MetricCollection> metricQueue;
-    private final Set<SdkMetric<String>> dimensions;
-    private final String namespace;
-    private Duration publishFrequency;
+    private final Duration publishFrequency;
     private final ScheduledExecutorService aggregatorThread;
 
     public MetricConsumer(CloudWatchAsyncClient cloudWatchClient,
                           int maxMetricQueueSize,
                           Set<SdkMetric<String>> dimensions,
+                          Set<MetricCategory> metricCategories,
+                          Set<SdkMetric<?>> nonSummaryMetrics,
                           String namespace,
                           Duration publishFrequency) {
         this.cloudWatchClient = cloudWatchClient;
         this.metricQueue = new LinkedBlockingQueue<>(maxMetricQueueSize);
-        this.dimensions = dimensions;
-        this.namespace = namespace;
         this.publishFrequency = publishFrequency;
+        this.transformer = new MetricCollectionTransformer(namespace, dimensions, metricCategories, nonSummaryMetrics);
         this.aggregatorThread = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder()
                                                                              .threadNamePrefix("cloudwatch-metrics")
                                                                              .build());
@@ -75,16 +69,34 @@ public class MetricConsumer {
     }
 
     private void flushMetricQueue() {
-        List<CompletableFuture<?>> publishResults = new ArrayList<>();
-        MetricCollection metricCollection = metricQueue.poll();
-        while (metricCollection != null) {
-            toPutMetricDataRequest(metricCollection)
-                .map(cloudWatchClient::putMetricData)
-                .ifPresent(publishResults::add);
+        List<CompletableFuture<?>> publishResults = startCalls();
+        List<Throwable> failures = waitForCallsToComplete(publishResults);
 
-            metricCollection = metricQueue.poll();
+        if (failures.isEmpty()) {
+            System.out.println("Published " + publishResults.size() + " requests.");
+        } else {
+            System.out.println(failures.size() + " out of " + publishResults.size() + " requests failed to "
+                               + "publish. One failure reason follows.");
+            failures.get(0).printStackTrace();
+        }
+    }
+
+    private List<CompletableFuture<?>> startCalls() {
+        List<MetricCollection> collections = new ArrayList<>();
+        MetricCollection collection = metricQueue.poll();
+        while (collection != null) {
+            collections.add(collection);
+            collection = metricQueue.poll();
         }
 
+        return transformer.transform(collections)
+                          .stream()
+                          .peek(System.out::println)
+                          .map(cloudWatchClient::putMetricData)
+                          .collect(Collectors.toList());
+    }
+
+    private List<Throwable> waitForCallsToComplete(List<CompletableFuture<?>> publishResults) {
         List<Throwable> failures = new ArrayList<>();
         for (CompletableFuture<?> publishResult : publishResults) {
             try {
@@ -95,80 +107,7 @@ public class MetricConsumer {
                 failures.add(e.getCause());
             }
         }
-
-        if (failures.isEmpty()) {
-            System.out.println("Published " + publishResults.size() + " metric collections.");
-        } else {
-            System.out.println(failures.size() + " out of " + publishResults.size() + " metric collections failed to "
-                               + "publish. One failure reason follows.");
-            failures.get(0).printStackTrace();
-        }
-    }
-
-    private Optional<PutMetricDataRequest> toPutMetricDataRequest(MetricCollection metricCollection) {
-        List<MetricDatum> metricData = toMetricData(metricCollection);
-        if (metricData.isEmpty()) {
-            return Optional.empty();
-        }
-
-        return Optional.of(PutMetricDataRequest.builder()
-                                               .namespace(namespace)
-                                               .metricData(metricData)
-                                               .build());
-    }
-
-    private List<MetricDatum> toMetricData(MetricCollection metricCollection) {
-        List<Dimension> dimensions = dimensions(metricCollection);
-        List<MetricDatum> result = new ArrayList<>();
-        for (MetricRecord<?> metricRecord : metricCollection) {
-            toMetricData(metricCollection, dimensions, metricRecord).ifPresent(result::add);
-        }
-        return result;
-    }
-
-    private Optional<MetricDatum> toMetricData(MetricCollection metricCollection,
-                                               List<Dimension> dimensions,
-                                               MetricRecord<?> metricRecord) {
-
-        return extractMetricData(metricRecord).map(d -> MetricDatum.builder()
-                                                                   .dimensions(dimensions)
-                                                                   .metricName(metricRecord.metric().name())
-                                                                   .timestamp(metricCollection.creationTime())
-                                                                   .value(d.value)
-                                                                   .unit(d.unit)
-                                                                   .build());
-    }
-
-    private Optional<SdkMetricData> extractMetricData(MetricRecord<?> metricRecord) {
-        Class<?> metricType = metricRecord.metric().valueClass();
-        if (Number.class.isAssignableFrom(metricType)) {
-            return Optional.of(extractMetricData((Number) metricRecord.value()));
-        } else if (Duration.class.isAssignableFrom(metricType)) {
-            return Optional.of(extractMetricData((Duration) metricRecord.value()));
-        }
-
-        return Optional.empty();
-    }
-
-    private SdkMetricData extractMetricData(Number value) {
-        return new SdkMetricData(value.doubleValue(), StandardUnit.NONE);
-    }
-
-    private SdkMetricData extractMetricData(Duration value) {
-        return new SdkMetricData(value.toMillis(), StandardUnit.MILLISECONDS);
-    }
-
-    private List<Dimension> dimensions(MetricCollection metricCollection) {
-        List<Dimension> result = new ArrayList<>();
-        for (MetricRecord<?> metricRecord : metricCollection) {
-            if (dimensions.contains(metricRecord.metric())) {
-                result.add(Dimension.builder()
-                                    .name(metricRecord.metric().name())
-                                    .value((String) metricRecord.value())
-                                    .build());
-            }
-        }
-        return result;
+        return failures;
     }
 
     public void close(boolean closeClient) {
@@ -176,15 +115,5 @@ public class MetricConsumer {
             this.cloudWatchClient.close();
         }
         this.aggregatorThread.shutdown();
-    }
-
-    private class SdkMetricData {
-        private final double value;
-        private final StandardUnit unit;
-
-        private SdkMetricData(double value, StandardUnit unit) {
-            this.value = value;
-            this.unit = unit;
-        }
     }
 }
