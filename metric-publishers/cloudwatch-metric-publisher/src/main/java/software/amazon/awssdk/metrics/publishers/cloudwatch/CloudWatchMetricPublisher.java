@@ -18,6 +18,7 @@ package software.amazon.awssdk.metrics.publishers.cloudwatch;
 import static java.util.Collections.singletonList;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -26,8 +27,10 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -38,6 +41,8 @@ import software.amazon.awssdk.metrics.MetricCollection;
 import software.amazon.awssdk.metrics.MetricPublisher;
 import software.amazon.awssdk.metrics.SdkMetric;
 import software.amazon.awssdk.metrics.publishers.cloudwatch.internal.CloudWatchUploader;
+import software.amazon.awssdk.metrics.publishers.cloudwatch.internal.task.AddMetricTask;
+import software.amazon.awssdk.metrics.publishers.cloudwatch.internal.task.FlushMetricsTask;
 import software.amazon.awssdk.metrics.publishers.cloudwatch.internal.transform.MetricCollectionTransformer;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
 import software.amazon.awssdk.utils.ThreadFactoryBuilder;
@@ -74,13 +79,12 @@ public final class CloudWatchMetricPublisher implements MetricPublisher {
         ThreadFactory threadFactory = new ThreadFactoryBuilder().threadNamePrefix("cloud-watch-metric-publisher").build();
 
         this.scheduledExecutor = Executors.newSingleThreadScheduledExecutor(threadFactory);
-        this.executor = Executors.newSingleThreadExecutor(threadFactory);
-
-        long publishFrequencyInMillis = resolvePublishFrequency(builder).toMillis();
-        this.scheduledExecutor.scheduleAtFixedRate(cloudWatchUploader::flushUploadQueue,
-                                                   publishFrequencyInMillis,
-                                                   publishFrequencyInMillis,
-                                                   TimeUnit.MILLISECONDS);
+        this.executor = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
+                                               new LinkedBlockingQueue<>(resolveMetricQueueSize(builder)),
+                                               threadFactory);
+        long flushFrequencyInMillis = resolvePublishFrequency(builder).toMillis();
+        this.scheduledExecutor.scheduleAtFixedRate(() -> executor.execute(new FlushMetricsTask()),
+                                                   flushFrequencyInMillis, flushFrequencyInMillis, TimeUnit.MILLISECONDS);
     }
 
     private Set<MetricCategory> resolveMetricCategories(Builder builder) {
@@ -117,8 +121,7 @@ public final class CloudWatchMetricPublisher implements MetricPublisher {
 
     @Override
     public void publish(MetricCollection metricCollection) {
-        executor.submit(() -> metricTransformer.transform(singletonList(metricCollection))
-                                               .forEach(cloudWatchUploader::addToUploadQueue));
+        executor.submit(new AddMetricTask(metricCollection));
     }
 
     @Override

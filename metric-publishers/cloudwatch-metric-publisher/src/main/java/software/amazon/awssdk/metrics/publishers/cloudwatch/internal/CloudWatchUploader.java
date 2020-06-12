@@ -17,36 +17,23 @@ package software.amazon.awssdk.metrics.publishers.cloudwatch.internal;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
 import software.amazon.awssdk.services.cloudwatch.model.PutMetricDataRequest;
-import software.amazon.awssdk.utils.ThreadFactoryBuilder;
 
 public class CloudWatchUploader {
     private final CloudWatchAsyncClient cloudWatchClient;
-    private final Queue<PutMetricDataRequest> publishQueue;
 
     public CloudWatchUploader(CloudWatchAsyncClient cloudWatchClient,
                               int maxMetricQueueSize) {
         this.cloudWatchClient = cloudWatchClient;
-        this.publishQueue = new LinkedBlockingQueue<>(maxMetricQueueSize);
     }
 
-    public void addToUploadQueue(PutMetricDataRequest request) {
-        if (!publishQueue.offer(request)) {
-            System.out.println("Request metrics have been dropped because the cloudwatch metric queue is full.");
-        }
-    }
-
-    public CompletableFuture<Void> flushUploadQueue() {
-        CompletableFuture<?>[] publishResults = startCalls();
+    public CompletableFuture<Void> upload(List<PutMetricDataRequest> requests) {
+        CompletableFuture<?>[] publishResults = startCalls(requests);
         return CompletableFuture.allOf(publishResults).whenComplete((r, t) -> {
             int numRequests = publishResults.length;
             if (t != null) {
@@ -58,32 +45,11 @@ public class CloudWatchUploader {
         });
     }
 
-    private CompletableFuture<?>[] startCalls() {
-        List<PutMetricDataRequest> requests = new ArrayList<>();
-        PutMetricDataRequest request = publishQueue.poll();
-        while (request != null) {
-            requests.add(request);
-            request = publishQueue.poll();
-        }
-
+    private CompletableFuture<?>[] startCalls(List<PutMetricDataRequest> requests) {
         return requests.stream()
                        .peek(System.out::println)
                        .map(cloudWatchClient::putMetricData)
                        .toArray(CompletableFuture[]::new);
-    }
-
-    private List<Throwable> waitForCallsToComplete(List<CompletableFuture<?>> publishResults) {
-        List<Throwable> failures = new ArrayList<>();
-        for (CompletableFuture<?> publishResult : publishResults) {
-            try {
-                publishResult.get(5, TimeUnit.SECONDS);
-            } catch (InterruptedException | TimeoutException e) {
-                failures.add(e);
-            } catch (ExecutionException e) {
-                failures.add(e.getCause());
-            }
-        }
-        return failures;
     }
 
     public void close(boolean closeClient) {
