@@ -15,20 +15,17 @@
 
 package software.amazon.awssdk.metrics.publishers.cloudwatch.internal;
 
-import java.util.ArrayList;
+import static software.amazon.awssdk.metrics.publishers.cloudwatch.internal.CloudWatchMetricLogger.METRIC_LOGGER;
+
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
 import software.amazon.awssdk.services.cloudwatch.model.PutMetricDataRequest;
 
-public class CloudWatchUploader {
+public class MetricUploader {
     private final CloudWatchAsyncClient cloudWatchClient;
 
-    public CloudWatchUploader(CloudWatchAsyncClient cloudWatchClient,
-                              int maxMetricQueueSize) {
+    public MetricUploader(CloudWatchAsyncClient cloudWatchClient) {
         this.cloudWatchClient = cloudWatchClient;
     }
 
@@ -37,17 +34,16 @@ public class CloudWatchUploader {
         return CompletableFuture.allOf(publishResults).whenComplete((r, t) -> {
             int numRequests = publishResults.length;
             if (t != null) {
-                System.out.println("Failed while publishing a portion of " + numRequests + " requests.");
-                t.printStackTrace();
+                METRIC_LOGGER.warn(() -> "Failed while publishing some or all AWS SDK client-side metrics to CloudWatch.", t);
             } else {
-                System.out.println("Published " + numRequests + " requests.");
+                METRIC_LOGGER.debug(() -> "Successfully published " + numRequests +
+                                          " AWS SDK client-side metric requests to CloudWatch.");
             }
         });
     }
 
     private CompletableFuture<?>[] startCalls(List<PutMetricDataRequest> requests) {
         return requests.stream()
-                       .peek(System.out::println)
                        .map(cloudWatchClient::putMetricData)
                        .toArray(CompletableFuture[]::new);
     }

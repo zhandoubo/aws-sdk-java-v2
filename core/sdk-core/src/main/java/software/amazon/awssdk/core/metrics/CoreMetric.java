@@ -33,6 +33,8 @@ public final class CoreMetric {
      */
     public static final SdkMetric<String> OPERATION_NAME = metric("OperationName", String.class);
 
+    public static final SdkMetric<String> HOST_NAME = metric("HostName", String.class);
+
     /**
      * The duration of the API call. This includes all call attempts made.
      */

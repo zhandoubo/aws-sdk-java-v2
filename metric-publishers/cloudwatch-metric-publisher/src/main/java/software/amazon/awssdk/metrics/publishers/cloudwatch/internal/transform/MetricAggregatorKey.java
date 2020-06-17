@@ -4,11 +4,11 @@ import java.util.List;
 import software.amazon.awssdk.metrics.SdkMetric;
 import software.amazon.awssdk.services.cloudwatch.model.Dimension;
 
-class SdkMetricAggregatorKey {
+class MetricAggregatorKey {
     private final SdkMetric<?> metric;
     private final List<Dimension> dimensions;
 
-    SdkMetricAggregatorKey(SdkMetric<?> metric, List<Dimension> dimensions) {
+    MetricAggregatorKey(SdkMetric<?> metric, List<Dimension> dimensions) {
         this.metric = metric;
         this.dimensions = dimensions;
     }
@@ -30,7 +30,7 @@ class SdkMetricAggregatorKey {
             return false;
         }
 
-        SdkMetricAggregatorKey that = (SdkMetricAggregatorKey) o;
+        MetricAggregatorKey that = (MetricAggregatorKey) o;
 
         if (!metric.equals(that.metric)) {
             return false;
