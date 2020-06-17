@@ -23,12 +23,12 @@ import software.amazon.awssdk.utils.Logger;
  */
 @SdkInternalApi
 public class CloudWatchMetricLogger {
-    private CloudWatchMetricLogger() {
-    }
-
     /**
      * The logger via which all cloudwatch-metric-publisher logs are written. This allows customers to easily enable/disable logs
      * written from this module.
      */
     public static final Logger METRIC_LOGGER = Logger.loggerFor("software.amazon.awssdk.metrics.publishers.cloudwatch");
+
+    private CloudWatchMetricLogger() {
+    }
 }

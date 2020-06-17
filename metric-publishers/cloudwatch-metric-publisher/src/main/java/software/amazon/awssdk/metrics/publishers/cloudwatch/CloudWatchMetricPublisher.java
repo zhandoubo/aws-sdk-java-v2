@@ -160,18 +160,20 @@ public final class CloudWatchMetricPublisher implements MetricPublisher {
      * CloudWatch. If this value is too high, memory is wasted. If this value is too low, metrics could be dropped.
      *
      * This value is not currently configurable, because it's unlikely that this is a value that customers should need to modify.
-     * If customers really need control over this value, we might consider letting them instead configure the {@link BlockingQueue}
-     * used on the executor. The value here depends on the type of {@code BlockingQueue} in use, and we should probably not
-     * indirectly couple people to the type of blocking queue we're using.
+     * If customers really need control over this value, we might consider letting them instead configure the
+     * {@link BlockingQueue} used on the executor. The value here depends on the type of {@code BlockingQueue} in use, and
+     * we should probably not indirectly couple people to the type of blocking queue we're using.
      */
     private static final int MAXIMUM_TASK_QUEUE_SIZE = 128;
 
     private static final String DEFAULT_NAMESPACE = "AwsSdk/JavaSdk2";
     private static final int DEFAULT_MAXIMUM_CALLS_PER_UPLOAD = 10;
     private static final Duration DEFAULT_UPLOAD_FREQUENCY = Duration.ofMinutes(1);
-    private static final Set<SdkMetric<String>> DEFAULT_DIMENSIONS = Stream.of(CoreMetric.SERVICE_ID, CoreMetric.OPERATION_NAME)
+    private static final Set<SdkMetric<String>> DEFAULT_DIMENSIONS = Stream.of(CoreMetric.SERVICE_ID,
+                                                                               CoreMetric.OPERATION_NAME)
                                                                            .collect(Collectors.toSet());
-    private static final Set<MetricCategory> DEFAULT_METRIC_CATEGORIES = Stream.of(MetricCategory.DEFAULT, MetricCategory.HTTP_CLIENT)
+    private static final Set<MetricCategory> DEFAULT_METRIC_CATEGORIES = Stream.of(MetricCategory.DEFAULT,
+                                                                                   MetricCategory.HTTP_CLIENT)
                                                                                .collect(Collectors.toSet());
     private static final Set<SdkMetric<?>> DEFAULT_DETAILED_METRICS = Collections.emptySet();
 

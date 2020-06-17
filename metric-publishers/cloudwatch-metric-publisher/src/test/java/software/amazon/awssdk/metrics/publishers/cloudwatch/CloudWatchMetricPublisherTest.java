@@ -53,6 +53,7 @@ public class CloudWatchMetricPublisherTest {
 
         Mockito.when(cloudWatch.putMetricData(any(PutMetricDataRequest.class)))
                .thenReturn(CompletableFuture.completedFuture(PutMetricDataResponse.builder().build()));
+        throw new IllegalStateException();
     }
 
     @Test
