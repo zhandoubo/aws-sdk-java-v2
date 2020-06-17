@@ -1,9 +1,15 @@
 package software.amazon.awssdk.metrics.publishers.cloudwatch.internal.transform;
 
 import java.util.List;
+import software.amazon.awssdk.annotations.SdkInternalApi;
 import software.amazon.awssdk.metrics.SdkMetric;
 import software.amazon.awssdk.services.cloudwatch.model.Dimension;
 
+/**
+ * A pairing of {@link SdkMetric} and {@link Dimension}s that can be used as a key in a map. This uniquely identifies a specific
+ * {@link MetricAggregator}.
+ */
+@SdkInternalApi
 class MetricAggregatorKey {
     private final SdkMetric<?> metric;
     private final List<Dimension> dimensions;

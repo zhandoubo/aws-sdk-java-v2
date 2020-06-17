@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import software.amazon.awssdk.annotations.SdkInternalApi;
 import software.amazon.awssdk.metrics.MetricCategory;
 import software.amazon.awssdk.metrics.MetricCollection;
 import software.amazon.awssdk.metrics.MetricRecord;
@@ -21,32 +22,70 @@ import software.amazon.awssdk.metrics.SdkMetric;
 import software.amazon.awssdk.services.cloudwatch.model.Dimension;
 import software.amazon.awssdk.services.cloudwatch.model.StandardUnit;
 
+/**
+ * "Buckets" metrics by the minute in which they were collected. This allows all metric data for a given 1-minute period to be
+ * aggregated under a specific {@link MetricAggregator}.
+ */
+@SdkInternalApi
 class TimeBucketedMetrics {
+    /**
+     * A map from "the minute during which a metric value happened" to "the dimension and metric associated with the metric
+     * values" to "the aggregator for the metric values that occurred within that minute and for that dimension/metric".
+     */
     private final Map<Instant, Map<MetricAggregatorKey, MetricAggregator>> timeBucketedMetrics = new HashMap<>();
 
+    /**
+     * The dimensions that should be used for aggregating metrics that occur within a given minute. These are optional values.
+     * The dimensions will be used if a {@link MetricCollection} includes them, but if it does not, it will be aggregated with
+     * whatever dimensions (if any) are available.
+     */
     private final Set<SdkMetric<String>> dimensions;
-    private final Set<MetricCategory> metricCategories;
+
+    /**
+     * The set of metrics for which {@link DetailedMetricAggregator}s should be used for aggregation. All other metrics will use
+     * a {@link SummaryMetricAggregator}.
+     */
     private final Set<SdkMetric<?>> detailedMetrics;
+
+    /**
+     * The metric categories for which we should aggregate values. Any categories outside of this set will have their values
+     * ignored/dropped.
+     */
+    private final Set<MetricCategory> metricCategories;
+
+    /**
+     * True, when the {@link #metricCategories} contains {@link MetricCategory#ALL}.
+     */
     private final boolean metricCategoriesContainsAll;
 
     public TimeBucketedMetrics(Set<SdkMetric<String>> dimensions,
                                Set<MetricCategory> metricCategories,
                                Set<SdkMetric<?>> detailedMetrics) {
         this.dimensions = dimensions;
-        this.metricCategories = metricCategories;
         this.detailedMetrics = detailedMetrics;
+        this.metricCategories = metricCategories;
         this.metricCategoriesContainsAll = metricCategories.contains(MetricCategory.ALL);
     }
 
+    /**
+     * Add the provided collection to the proper bucket, based on the metric collection's time.
+     */
     public void addMetrics(MetricCollection metrics) {
         Instant bucket = getBucket(metrics);
         addMetricsToBucket(metrics, bucket);
     }
 
+    /**
+     * Reset this bucket, clearing all stored values.
+     */
     public void reset() {
         timeBucketedMetrics.clear();
     }
 
+    /**
+     * Retrieve all values in this collection. The map key is the minute in which the metric values were collected, and the
+     * map value are all of the metrics that were aggregated during that minute.
+     */
     public Map<Instant, Collection<MetricAggregator>> timeBucketedMetrics() {
         return timeBucketedMetrics.entrySet()
                                   .stream()

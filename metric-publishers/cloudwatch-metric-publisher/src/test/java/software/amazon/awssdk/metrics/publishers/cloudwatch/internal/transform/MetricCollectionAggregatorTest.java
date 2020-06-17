@@ -1,8 +1,10 @@
 package software.amazon.awssdk.metrics.publishers.cloudwatch.internal.transform;
 
+import static java.time.temporal.ChronoUnit.HOURS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.Set;
 import java.util.UUID;
@@ -13,8 +15,10 @@ import org.junit.Test;
 import software.amazon.awssdk.core.metrics.CoreMetric;
 import software.amazon.awssdk.http.HttpMetric;
 import software.amazon.awssdk.metrics.MetricCategory;
+import software.amazon.awssdk.metrics.MetricCollection;
 import software.amazon.awssdk.metrics.MetricCollector;
 import software.amazon.awssdk.metrics.SdkMetric;
+import software.amazon.awssdk.metrics.publishers.cloudwatch.FixedTimeMetricCollection;
 import software.amazon.awssdk.services.cloudwatch.model.StatisticSet;
 
 public class MetricCollectionAggregatorTest {
@@ -50,13 +54,13 @@ public class MetricCollectionAggregatorTest {
         collector.reportMetric(CoreMetric.SERVICE_ID, "ServiceId");
         collector.reportMetric(CoreMetric.OPERATION_NAME, "OperationName");
         collector.reportMetric(HttpMetric.MAX_CONCURRENCY, 1);
-        aggregator.addCollection(collector.collect());
+        aggregator.addCollection(collectToFixedTime(collector));
 
         collector = collector();
         collector.reportMetric(CoreMetric.OPERATION_NAME, "OperationName");
         collector.reportMetric(CoreMetric.SERVICE_ID, "ServiceId");
         collector.reportMetric(HttpMetric.MAX_CONCURRENCY, 2);
-        aggregator.addCollection(collector.collect());
+        aggregator.addCollection(collectToFixedTime(collector));
 
         assertThat(aggregator.getRequests()).hasOnlyOneElementSatisfying(request -> {
             assertThat(request.metricData()).hasSize(1);
@@ -64,28 +68,34 @@ public class MetricCollectionAggregatorTest {
     }
 
     @Test
-    public void metricsAreAggregatedByDimensionAndMetric() {
+    public void metricsAreAggregatedByDimensionMetricAndTime() {
         MetricCollectionAggregator aggregator = defaultAggregator();
 
         MetricCollector collector = collector();
         collector.reportMetric(HttpMetric.MAX_CONCURRENCY, 1);
-        aggregator.addCollection(collector.collect());
+        aggregator.addCollection(collectToFixedTimeBucket(collector, 0));
 
         collector = collector();
         collector.reportMetric(CoreMetric.SERVICE_ID, "ServiceId");
         collector.reportMetric(HttpMetric.MAX_CONCURRENCY, 2);
-        aggregator.addCollection(collector.collect());
+        aggregator.addCollection(collectToFixedTimeBucket(collector, 0));
 
         collector = collector();
         collector.reportMetric(CoreMetric.SERVICE_ID, "ServiceId");
         collector.reportMetric(CoreMetric.OPERATION_NAME, "OperationName");
         collector.reportMetric(HttpMetric.MAX_CONCURRENCY, 3);
         collector.reportMetric(HttpMetric.AVAILABLE_CONCURRENCY, 4);
-        aggregator.addCollection(collector.collect());
+        aggregator.addCollection(collectToFixedTimeBucket(collector, 0));
+
+        collector = collector();
+        collector.reportMetric(CoreMetric.SERVICE_ID, "ServiceId");
+        collector.reportMetric(CoreMetric.OPERATION_NAME, "OperationName");
+        collector.reportMetric(HttpMetric.MAX_CONCURRENCY, 5);
+        aggregator.addCollection(collectToFixedTimeBucket(collector, 1));
 
         assertThat(aggregator.getRequests()).hasOnlyOneElementSatisfying(request -> {
             assertThat(request.namespace()).isEqualTo(DEFAULT_NAMESPACE);
-            assertThat(request.metricData()).hasSize(4).allSatisfy(data -> {
+            assertThat(request.metricData()).hasSize(5).allSatisfy(data -> {
                 assertThat(data.values()).isEmpty();
                 assertThat(data.counts()).isEmpty();
                 if (data.dimensions().isEmpty()) {
@@ -98,13 +108,21 @@ public class MetricCollectionAggregatorTest {
                     assertThat(data.statisticValues().sum()).isEqualTo(2);
                 } else {
                     assertThat(data.dimensions().size()).isEqualTo(2);
-                    if (data.metricName().equals(HttpMetric.MAX_CONCURRENCY.name())) {
-                        assertThat(data.statisticValues().sampleCount()).isEqualTo(1);
-                        assertThat(data.statisticValues().sum()).isEqualTo(3);
+                    if (data.timestamp().equals(Instant.MIN)) {
+                        // Time bucket 0
+                        if (data.metricName().equals(HttpMetric.MAX_CONCURRENCY.name())) {
+                            assertThat(data.statisticValues().sampleCount()).isEqualTo(1);
+                            assertThat(data.statisticValues().sum()).isEqualTo(3);
+                        } else {
+                            assertThat(data.metricName()).isEqualTo(HttpMetric.AVAILABLE_CONCURRENCY.name());
+                            assertThat(data.statisticValues().sampleCount()).isEqualTo(1);
+                            assertThat(data.statisticValues().sum()).isEqualTo(4);
+                        }
                     } else {
-                        assertThat(data.metricName()).isEqualTo(HttpMetric.AVAILABLE_CONCURRENCY.name());
+                        // Time bucket 1
+                        assertThat(data.metricName()).isEqualTo(HttpMetric.MAX_CONCURRENCY.name());
                         assertThat(data.statisticValues().sampleCount()).isEqualTo(1);
-                        assertThat(data.statisticValues().sum()).isEqualTo(4);
+                        assertThat(data.statisticValues().sum()).isEqualTo(5);
                     }
                 }
             });
@@ -121,7 +139,7 @@ public class MetricCollectionAggregatorTest {
         collector.reportMetric(HttpMetric.MAX_CONCURRENCY, 4);
         collector.reportMetric(HttpMetric.MAX_CONCURRENCY, 4);
         collector.reportMetric(HttpMetric.MAX_CONCURRENCY, 3);
-        aggregator.addCollection(collector.collect());
+        aggregator.addCollection(collectToFixedTime(collector));
 
         assertThat(aggregator.getRequests()).hasOnlyOneElementSatisfying(request -> {
             assertThat(request.namespace()).isEqualTo(DEFAULT_NAMESPACE);
@@ -149,27 +167,27 @@ public class MetricCollectionAggregatorTest {
         MetricCollector collector = collector();
         collector.reportMetric(CoreMetric.SERVICE_ID, "ServiceId");
         collector.reportMetric(HttpMetric.MAX_CONCURRENCY, 2);
-        aggregator.addCollection(collector.collect());
+        aggregator.addCollection(collectToFixedTime(collector));
 
         collector = collector();
         collector.reportMetric(CoreMetric.SERVICE_ID, "ServiceId");
         collector.reportMetric(HttpMetric.MAX_CONCURRENCY, 1);
-        aggregator.addCollection(collector.collect());
+        aggregator.addCollection(collectToFixedTime(collector));
 
         collector = collector();
         collector.reportMetric(CoreMetric.SERVICE_ID, "ServiceId");
         collector.reportMetric(HttpMetric.MAX_CONCURRENCY, 4);
-        aggregator.addCollection(collector.collect());
+        aggregator.addCollection(collectToFixedTime(collector));
 
         collector = collector();
         collector.reportMetric(CoreMetric.SERVICE_ID, "ServiceId");
         collector.reportMetric(HttpMetric.MAX_CONCURRENCY, 4);
-        aggregator.addCollection(collector.collect());
+        aggregator.addCollection(collectToFixedTime(collector));
 
         collector = collector();
         collector.reportMetric(CoreMetric.SERVICE_ID, "ServiceId");
         collector.reportMetric(HttpMetric.MAX_CONCURRENCY, 3);
-        aggregator.addCollection(collector.collect());
+        aggregator.addCollection(collectToFixedTime(collector));
 
         assertThat(aggregator.getRequests()).hasOnlyOneElementSatisfying(request -> {
             assertThat(request.namespace()).isEqualTo(DEFAULT_NAMESPACE);
@@ -200,7 +218,7 @@ public class MetricCollectionAggregatorTest {
         collector.reportMetric(HttpMetric.MAX_CONCURRENCY, 4);
         collector.reportMetric(HttpMetric.MAX_CONCURRENCY, 4);
         collector.reportMetric(HttpMetric.MAX_CONCURRENCY, 3);
-        aggregator.addCollection(collector.collect());
+        aggregator.addCollection(collectToFixedTime(collector));
 
         assertThat(aggregator.getRequests()).hasOnlyOneElementSatisfying(request -> {
             assertThat(request.namespace()).isEqualTo(DEFAULT_NAMESPACE);
@@ -238,7 +256,7 @@ public class MetricCollectionAggregatorTest {
         MetricCollector collector = collector();
         collector.reportMetric(CoreMetric.SERVICE_ID, "ServiceId");
         collector.reportMetric(CoreMetric.HTTP_STATUS_CODE, 404);
-        aggregator.addCollection(collector.collect());
+        aggregator.addCollection(collectToFixedTime(collector));
 
         assertThat(aggregator.getRequests()).isEmpty();
     }
@@ -249,7 +267,7 @@ public class MetricCollectionAggregatorTest {
         MetricCollector collector = collector();
         collector.reportMetric(CoreMetric.SERVICE_ID, "ServiceId");
         collector.reportMetric(HttpMetric.MAX_CONCURRENCY, 1);
-        aggregator.addCollection(collector.collect());
+        aggregator.addCollection(collectToFixedTime(collector));
 
         assertThat(aggregator.getRequests()).hasSize(1);
         assertThat(aggregator.getRequests()).isEmpty();
@@ -275,7 +293,7 @@ public class MetricCollectionAggregatorTest {
         MetricCollectionAggregator aggregator = aggregatorWithCustomDetailedMetrics(metric);
         MetricCollector collector = collector();
         collector.reportMetric(metric, input);
-        aggregator.addCollection(collector.collect());
+        aggregator.addCollection(collectToFixedTime(collector));
 
         return aggregator.getRequests().get(0).metricData().get(0).values().get(0);
     }
@@ -285,7 +303,7 @@ public class MetricCollectionAggregatorTest {
         for (int i = 0; i < numValues; i++) {
             MetricCollector collector = collector();
             collector.reportMetric(metric, i);
-            aggregator.addCollection(collector.collect());
+            aggregator.addCollection(collectToFixedTime(collector));
         }
         return aggregator;
     }
@@ -296,7 +314,7 @@ public class MetricCollectionAggregatorTest {
         for (int i = 0; i < numMetrics; i++) {
             collector.reportMetric(someMetric(), 0);
         }
-        aggregator.addCollection(collector.collect());
+        aggregator.addCollection(collectToFixedTime(collector));
         return aggregator;
     }
 
@@ -325,6 +343,19 @@ public class MetricCollectionAggregatorTest {
     private <T> SdkMetric<T> someMetric(Class<T> clazz) {
         return SdkMetric.create(getClass().getSimpleName() + UUID.randomUUID().toString(),
                                 clazz, MetricCategory.HTTP_CLIENT);
+    }
+
+    private MetricCollection collectToFixedTime(MetricCollector collector) {
+        return new FixedTimeMetricCollection(collector.collect());
+    }
+
+    private MetricCollection collectToFixedTimeBucket(MetricCollector collector, int timeBucket) {
+        // Make sure collectors in different "time buckets" are in a different minute than other collectors. We also offset the
+        // hour by a few seconds, to make sure the metric collection aggregator is actually ignoring the "seconds" portion of
+        // the collection time.
+        Instant metricTime = Instant.MIN.plus(timeBucket, HOURS)
+                                        .plusSeconds(Math.max(59, timeBucket));
+        return new FixedTimeMetricCollection(collector.collect(), metricTime);
     }
 
     private static class CustomNumber extends Number {

@@ -5,10 +5,17 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import software.amazon.awssdk.annotations.SdkInternalApi;
 import software.amazon.awssdk.metrics.SdkMetric;
 import software.amazon.awssdk.services.cloudwatch.model.Dimension;
+import software.amazon.awssdk.services.cloudwatch.model.MetricDatum;
 import software.amazon.awssdk.services.cloudwatch.model.StandardUnit;
 
+/**
+ * An implementation of {@link MetricAggregator} that stores all values and counts for a given metric/dimension pair
+ * until they can be added to a {@link MetricDatum}.
+ */
+@SdkInternalApi
 class DetailedMetricAggregator implements MetricAggregator {
     private final SdkMetric<?> metric;
     private final List<Dimension> dimensions;

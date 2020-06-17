@@ -4,18 +4,25 @@ import static software.amazon.awssdk.metrics.publishers.cloudwatch.internal.Clou
 
 import java.util.Collections;
 import java.util.List;
+import software.amazon.awssdk.annotations.SdkInternalApi;
+import software.amazon.awssdk.metrics.publishers.cloudwatch.CloudWatchMetricPublisher;
 import software.amazon.awssdk.metrics.publishers.cloudwatch.internal.MetricUploader;
 import software.amazon.awssdk.metrics.publishers.cloudwatch.internal.transform.MetricCollectionAggregator;
 import software.amazon.awssdk.services.cloudwatch.model.PutMetricDataRequest;
 
-public class FlushMetricsTask implements MetricTask {
+/**
+ * A task that is executed on the {@link CloudWatchMetricPublisher}'s executor to collect requests from a
+ * {@link MetricCollectionAggregator} and write them to a {@link MetricUploader}.
+ */
+@SdkInternalApi
+public class UploadMetricsTasks implements Runnable {
     private final MetricCollectionAggregator collectionAggregator;
     private final MetricUploader uploader;
     private int maximumRequestsPerFlush;
 
-    public FlushMetricsTask(MetricCollectionAggregator collectionAggregator,
-                            MetricUploader uploader,
-                            int maximumRequestsPerFlush) {
+    public UploadMetricsTasks(MetricCollectionAggregator collectionAggregator,
+                              MetricUploader uploader,
+                              int maximumRequestsPerFlush) {
         this.collectionAggregator = collectionAggregator;
         this.uploader = uploader;
         this.maximumRequestsPerFlush = maximumRequestsPerFlush;

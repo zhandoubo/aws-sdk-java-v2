@@ -18,7 +18,17 @@ package software.amazon.awssdk.metrics.publishers.cloudwatch.internal;
 import software.amazon.awssdk.annotations.SdkInternalApi;
 import software.amazon.awssdk.utils.Logger;
 
+/**
+ * A holder for {@link #METRIC_LOGGER}.
+ */
 @SdkInternalApi
 public class CloudWatchMetricLogger {
+    private CloudWatchMetricLogger() {
+    }
+
+    /**
+     * The logger via which all cloudwatch-metric-publisher logs are written. This allows customers to easily enable/disable logs
+     * written from this module.
+     */
     public static final Logger METRIC_LOGGER = Logger.loggerFor("software.amazon.awssdk.metrics.publishers.cloudwatch");
 }

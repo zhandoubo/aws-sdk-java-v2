@@ -49,7 +49,7 @@ public class CloudWatchMetricPublisherTest {
         cloudWatch = Mockito.mock(CloudWatchAsyncClient.class);
         publisherBuilder = CloudWatchMetricPublisher.builder()
                                                     .cloudWatchClient(cloudWatch)
-                                                    .publishFrequency(Duration.ofMinutes(60));
+                                                    .uploadFrequency(Duration.ofMinutes(60));
 
         Mockito.when(cloudWatch.putMetricData(any(PutMetricDataRequest.class)))
                .thenReturn(CompletableFuture.completedFuture(PutMetricDataResponse.builder().build()));
@@ -76,7 +76,7 @@ public class CloudWatchMetricPublisherTest {
                                                                             .build()) {
             MetricCollector collector = newCollector();
             collector.reportMetric(HttpMetric.AVAILABLE_CONCURRENCY, 5);
-            publisher.publish(collector.collect());
+            publisher.publish(new FixedTimeMetricCollection(collector.collect()));
         }
 
         PutMetricDataRequest call = getPutMetricCall();
@@ -92,7 +92,7 @@ public class CloudWatchMetricPublisherTest {
             collector.reportMetric(CoreMetric.SERVICE_ID, "ServiceId");
             collector.reportMetric(CoreMetric.OPERATION_NAME, "OperationName");
             collector.reportMetric(HttpMetric.AVAILABLE_CONCURRENCY, 5);
-            publisher.publish(collector.collect());
+            publisher.publish(new FixedTimeMetricCollection(collector.collect()));
         }
 
         PutMetricDataRequest call = getPutMetricCall();
@@ -112,7 +112,7 @@ public class CloudWatchMetricPublisherTest {
         try (CloudWatchMetricPublisher publisher = publisherBuilder.namespace("namespace").build()) {
             MetricCollector collector = newCollector();
             collector.reportMetric(HttpMetric.AVAILABLE_CONCURRENCY, 5);
-            publisher.publish(collector.collect());
+            publisher.publish(new FixedTimeMetricCollection(collector.collect()));
         }
 
         assertThat(getPutMetricCall().namespace()).isEqualTo("namespace");
@@ -125,7 +125,7 @@ public class CloudWatchMetricPublisherTest {
             collector.reportMetric(CoreMetric.SERVICE_ID, "ServiceId");
             collector.reportMetric(CoreMetric.OPERATION_NAME, "OperationName");
             collector.reportMetric(HttpMetric.AVAILABLE_CONCURRENCY, 5);
-            publisher.publish(collector.collect());
+            publisher.publish(new FixedTimeMetricCollection(collector.collect()));
         }
 
         PutMetricDataRequest call = getPutMetricCall();
@@ -142,7 +142,7 @@ public class CloudWatchMetricPublisherTest {
             collector.reportMetric(CoreMetric.SERVICE_ID, "ServiceId");
             collector.reportMetric(CoreMetric.HTTP_STATUS_CODE, 404);
             collector.reportMetric(HttpMetric.AVAILABLE_CONCURRENCY, 5);
-            publisher.publish(collector.collect());
+            publisher.publish(new FixedTimeMetricCollection(collector.collect()));
         }
 
         PutMetricDataRequest call = getPutMetricCall();
@@ -162,7 +162,7 @@ public class CloudWatchMetricPublisherTest {
             for (int i = 0; i < MetricCollectionAggregator.MAX_VALUES_PER_REQUEST + 1; ++i) {
                 MetricCollector collector = newCollector();
                 collector.reportMetric(HttpMetric.AVAILABLE_CONCURRENCY, i);
-                publisher.publish(collector.collect());
+                publisher.publish(new FixedTimeMetricCollection(collector.collect()));
             }
         }
 
@@ -176,7 +176,7 @@ public class CloudWatchMetricPublisherTest {
                 MetricCollector collector = newCollector();
                 collector.reportMetric(HttpMetric.MAX_CONCURRENCY, 10);
                 collector.reportMetric(HttpMetric.AVAILABLE_CONCURRENCY, i);
-                publisher.publish(collector.collect());
+                publisher.publish(new FixedTimeMetricCollection(collector.collect()));
             }
         }
 

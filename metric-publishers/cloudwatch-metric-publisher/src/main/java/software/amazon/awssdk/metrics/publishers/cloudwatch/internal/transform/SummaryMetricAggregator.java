@@ -1,10 +1,17 @@
 package software.amazon.awssdk.metrics.publishers.cloudwatch.internal.transform;
 
 import java.util.List;
+import software.amazon.awssdk.annotations.SdkInternalApi;
 import software.amazon.awssdk.metrics.SdkMetric;
 import software.amazon.awssdk.services.cloudwatch.model.Dimension;
+import software.amazon.awssdk.services.cloudwatch.model.MetricDatum;
 import software.amazon.awssdk.services.cloudwatch.model.StandardUnit;
 
+/**
+ * An implementation of {@link MetricAggregator} that stores summary statistics for a given metric/dimension pair until the
+ * summary can be added to a {@link MetricDatum}.
+ */
+@SdkInternalApi
 class SummaryMetricAggregator implements MetricAggregator {
     private final SdkMetric<?> metric;
     private final List<Dimension> dimensions;

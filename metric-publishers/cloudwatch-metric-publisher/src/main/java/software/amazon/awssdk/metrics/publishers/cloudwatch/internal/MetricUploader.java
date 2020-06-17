@@ -19,9 +19,15 @@ import static software.amazon.awssdk.metrics.publishers.cloudwatch.internal.Clou
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import software.amazon.awssdk.annotations.SdkInternalApi;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
 import software.amazon.awssdk.services.cloudwatch.model.PutMetricDataRequest;
 
+/**
+ * Uploads {@link PutMetricDataRequest}s to a {@link CloudWatchAsyncClient}, logging whether it was successful or a failure to
+ * the {@link CloudWatchMetricLogger#METRIC_LOGGER}.
+ */
+@SdkInternalApi
 public class MetricUploader {
     private final CloudWatchAsyncClient cloudWatchClient;
 
@@ -29,6 +35,10 @@ public class MetricUploader {
         this.cloudWatchClient = cloudWatchClient;
     }
 
+    /**
+     * Upload the provided list of requests to CloudWatch, completing the returned future when the uploads complete. Note: This
+     * will log a message if one of the provided requests fails.
+     */
     public CompletableFuture<Void> upload(List<PutMetricDataRequest> requests) {
         CompletableFuture<?>[] publishResults = startCalls(requests);
         return CompletableFuture.allOf(publishResults).whenComplete((r, t) -> {
@@ -44,8 +54,13 @@ public class MetricUploader {
 
     private CompletableFuture<?>[] startCalls(List<PutMetricDataRequest> requests) {
         return requests.stream()
+                       .peek(this::logRequest)
                        .map(cloudWatchClient::putMetricData)
                        .toArray(CompletableFuture[]::new);
+    }
+
+    private void logRequest(PutMetricDataRequest putMetricDataRequest) {
+        METRIC_LOGGER.trace(() -> "Sending request to CloudWatch: " + putMetricDataRequest);
     }
 
     public void close(boolean closeClient) {

@@ -6,6 +6,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import software.amazon.awssdk.annotations.NotThreadSafe;
+import software.amazon.awssdk.annotations.SdkInternalApi;
 import software.amazon.awssdk.metrics.MetricCategory;
 import software.amazon.awssdk.metrics.MetricCollection;
 import software.amazon.awssdk.metrics.SdkMetric;
@@ -14,14 +16,41 @@ import software.amazon.awssdk.services.cloudwatch.model.MetricDatum;
 import software.amazon.awssdk.services.cloudwatch.model.PutMetricDataRequest;
 import software.amazon.awssdk.services.cloudwatch.model.StatisticSet;
 
+/**
+ * Aggregates {@link MetricCollection}s by: (1) the minute in which they occurred, and (2) the dimensions in the collection
+ * associated with that metric. Allows retrieving the aggregated values as a list of {@link PutMetricDataRequest}s.
+ *
+ * <p>It would be too expensive to upload every {@code MetricCollection} as a unique {@code PutMetricDataRequest}, so this
+ * class aggregates the data so that multiple {@code MetricCollection}s can be placed in the same {@code PutMetricDataRequest}.
+ *
+ * <p><b>Warning:</b> This class is *not* thread-safe.
+ */
+@SdkInternalApi
+@NotThreadSafe
 public class MetricCollectionAggregator {
+    /**
+     * The maximum number of {@link MetricDatum}s allowed in {@link PutMetricDataRequest#metricData()}. This limit is imposed by
+     * CloudWatch.
+     */
     public static final int MAX_METRIC_DATA_PER_REQUEST = 20;
+
+    /**
+     * The maximum number of unique {@link MetricDatum#values()} allowed in a single {@link PutMetricDataRequest}. This limit is
+     * not imposed directly by CloudWatch, but they do impose a 40KB limit for a single request. This value was determined by
+     * trial-and-error to roughly equate to a 40KB limit when we are also at the {@link #MAX_METRIC_DATA_PER_REQUEST}.
+     */
     public static final int MAX_VALUES_PER_REQUEST = 300;
 
+    /**
+     * The {@link PutMetricDataRequest#namespace()} that should be used for all {@link PutMetricDataRequest}s returned from
+     * {@link #getRequests()}.
+     */
     private final String namespace;
-    private final Set<SdkMetric<String>> dimensions;
-    private final Set<MetricCategory> metricCategories;
 
+    /**
+     * The {@link TimeBucketedMetrics} that actually performs the data aggregation whenever
+     * {@link #addCollection(MetricCollection)} is called.
+     */
     private final TimeBucketedMetrics timeBucketedMetrics;
 
     public MetricCollectionAggregator(String namespace,
@@ -29,15 +58,20 @@ public class MetricCollectionAggregator {
                                       Set<MetricCategory> metricCategories,
                                       Set<SdkMetric<?>> detailedMetrics) {
         this.namespace = namespace;
-        this.dimensions = dimensions;
-        this.metricCategories = metricCategories;
         this.timeBucketedMetrics = new TimeBucketedMetrics(dimensions, metricCategories, detailedMetrics);
     }
 
+    /**
+     * Add a collection to this aggregator.
+     */
     public void addCollection(MetricCollection collection) {
         timeBucketedMetrics.addMetrics(collection);
     }
 
+    /**
+     * Get all {@link PutMetricDataRequest}s that can be generated from the data that was added via
+     * {@link #addCollection(MetricCollection)}. This method resets the state of this {@code MetricCollectionAggregator}.
+     */
     public List<PutMetricDataRequest> getRequests() {
         List<PutMetricDataRequest> requests = new ArrayList<>();
 

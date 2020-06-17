@@ -12,16 +12,16 @@ import software.amazon.awssdk.metrics.publishers.cloudwatch.internal.MetricUploa
 import software.amazon.awssdk.metrics.publishers.cloudwatch.internal.transform.MetricCollectionAggregator;
 import software.amazon.awssdk.services.cloudwatch.model.PutMetricDataRequest;
 
-public class FlushMetricsTaskTest {
+public class UploadMetricsTasksTest {
     private MetricCollectionAggregator aggregator;
     private MetricUploader uploader;
-    private FlushMetricsTask task;
+    private UploadMetricsTasks task;
 
     @Before
     public void setUp() {
         aggregator = Mockito.mock(MetricCollectionAggregator.class);
         uploader = Mockito.mock(MetricUploader.class);
-        task = new FlushMetricsTask(aggregator, uploader, 2);
+        task = new UploadMetricsTasks(aggregator, uploader, 2);
     }
 
 
