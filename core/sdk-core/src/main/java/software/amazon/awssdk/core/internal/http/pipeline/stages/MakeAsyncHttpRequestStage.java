@@ -183,7 +183,7 @@ public final class MakeAsyncHttpRequestStage<OutputT>
         // Offload the metrics reporting from this stage onto the future completion executor
         httpClientFuture.whenCompleteAsync((r, t) -> {
             long duration = System.nanoTime() - callStart;
-            metricCollector.reportMetric(CoreMetric.HTTP_REQUEST_ROUND_TRIP_TIME, Duration.ofNanos(duration));
+            metricCollector.reportMetric(CoreMetric.SERVICE_CALL_DURATION, Duration.ofNanos(duration));
         }, futureCompletionExecutor);
         return httpClientFuture;
     }

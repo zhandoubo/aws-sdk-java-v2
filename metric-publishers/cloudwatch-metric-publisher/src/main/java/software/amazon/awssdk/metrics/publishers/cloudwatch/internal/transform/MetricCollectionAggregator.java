@@ -26,6 +26,7 @@ import software.amazon.awssdk.annotations.NotThreadSafe;
 import software.amazon.awssdk.annotations.SdkInternalApi;
 import software.amazon.awssdk.metrics.MetricCategory;
 import software.amazon.awssdk.metrics.MetricCollection;
+import software.amazon.awssdk.metrics.MetricLevel;
 import software.amazon.awssdk.metrics.SdkMetric;
 import software.amazon.awssdk.metrics.publishers.cloudwatch.internal.transform.DetailedMetricAggregator.DetailedMetrics;
 import software.amazon.awssdk.services.cloudwatch.model.MetricDatum;
@@ -72,9 +73,10 @@ public class MetricCollectionAggregator {
     public MetricCollectionAggregator(String namespace,
                                       Set<SdkMetric<String>> dimensions,
                                       Set<MetricCategory> metricCategories,
+                                      MetricLevel metricLevel,
                                       Set<SdkMetric<?>> detailedMetrics) {
         this.namespace = namespace;
-        this.timeBucketedMetrics = new TimeBucketedMetrics(dimensions, metricCategories, detailedMetrics);
+        this.timeBucketedMetrics = new TimeBucketedMetrics(dimensions, metricCategories, metricLevel, detailedMetrics);
     }
 
     /**

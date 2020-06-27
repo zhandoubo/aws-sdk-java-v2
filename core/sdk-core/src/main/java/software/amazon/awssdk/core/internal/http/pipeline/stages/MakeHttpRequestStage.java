@@ -72,7 +72,7 @@ public class MakeHttpRequestStage
 
         Pair<HttpExecuteResponse, Duration> measuredExecute = MetricUtils.measureDurationUnsafe(requestCallable);
 
-        metricCollector.reportMetric(CoreMetric.HTTP_REQUEST_ROUND_TRIP_TIME, measuredExecute.right());
+        metricCollector.reportMetric(CoreMetric.SERVICE_CALL_DURATION, measuredExecute.right());
 
         return measuredExecute.left();
     }

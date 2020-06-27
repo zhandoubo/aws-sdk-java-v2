@@ -149,7 +149,7 @@ public class CloudWatchMetricPublisherTest {
         try (CloudWatchMetricPublisher publisher = publisherBuilder.metricCategories(MetricCategory.HTTP_CLIENT).build()) {
             MetricCollector collector = newCollector();
             collector.reportMetric(CoreMetric.SERVICE_ID, "ServiceId");
-            collector.reportMetric(CoreMetric.HTTP_STATUS_CODE, 404);
+            collector.reportMetric(HttpMetric.HTTP_STATUS_CODE, 404);
             collector.reportMetric(HttpMetric.AVAILABLE_CONCURRENCY, 5);
             publisher.publish(new FixedTimeMetricCollection(collector.collect()));
         }

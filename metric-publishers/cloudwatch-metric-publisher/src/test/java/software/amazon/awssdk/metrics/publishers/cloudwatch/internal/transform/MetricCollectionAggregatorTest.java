@@ -20,7 +20,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -34,6 +33,7 @@ import software.amazon.awssdk.http.HttpMetric;
 import software.amazon.awssdk.metrics.MetricCategory;
 import software.amazon.awssdk.metrics.MetricCollection;
 import software.amazon.awssdk.metrics.MetricCollector;
+import software.amazon.awssdk.metrics.MetricLevel;
 import software.amazon.awssdk.metrics.SdkMetric;
 import software.amazon.awssdk.metrics.publishers.cloudwatch.FixedTimeMetricCollection;
 import software.amazon.awssdk.services.cloudwatch.model.PutMetricDataRequest;
@@ -43,6 +43,7 @@ public class MetricCollectionAggregatorTest {
     private static final String DEFAULT_NAMESPACE = "namespace";
     private static final Set<SdkMetric<String>> DEFAULT_DIMENSIONS = Stream.of(CoreMetric.SERVICE_ID, CoreMetric.OPERATION_NAME)
                                                                            .collect(Collectors.toSet());
+    private static final MetricLevel DEFAULT_METRIC_LEVEL = MetricLevel.INFO;
     private static final Set<MetricCategory> DEFAULT_CATEGORIES = Collections.singleton(MetricCategory.HTTP_CLIENT);
     private static final Set<SdkMetric<?>> DEFAULT_DETAILED_METRICS = Collections.emptySet();
 
@@ -340,7 +341,7 @@ public class MetricCollectionAggregatorTest {
         MetricCollectionAggregator aggregator = defaultAggregator();
         MetricCollector collector = collector();
         collector.reportMetric(CoreMetric.SERVICE_ID, "ServiceId");
-        collector.reportMetric(CoreMetric.HTTP_STATUS_CODE, 404);
+        collector.reportMetric(HttpMetric.HTTP_STATUS_CODE, 404);
         aggregator.addCollection(collectToFixedTime(collector));
 
         assertThat(aggregator.getRequests()).isEmpty();
@@ -407,6 +408,7 @@ public class MetricCollectionAggregatorTest {
         return new MetricCollectionAggregator(DEFAULT_NAMESPACE,
                                               DEFAULT_DIMENSIONS,
                                               DEFAULT_CATEGORIES,
+                                              DEFAULT_METRIC_LEVEL,
                                               DEFAULT_DETAILED_METRICS);
     }
 
@@ -414,6 +416,7 @@ public class MetricCollectionAggregatorTest {
         return new MetricCollectionAggregator(DEFAULT_NAMESPACE,
                                               DEFAULT_DIMENSIONS,
                                               DEFAULT_CATEGORIES,
+                                              DEFAULT_METRIC_LEVEL,
                                               Stream.of(detailedMetrics).collect(Collectors.toSet()));
     }
 
@@ -427,7 +430,9 @@ public class MetricCollectionAggregatorTest {
 
     private <T> SdkMetric<T> someMetric(Class<T> clazz) {
         return SdkMetric.create(getClass().getSimpleName() + UUID.randomUUID().toString(),
-                                clazz, MetricCategory.HTTP_CLIENT);
+                                clazz,
+                                MetricLevel.INFO,
+                                MetricCategory.HTTP_CLIENT);
     }
 
     private MetricCollection collectToFixedTime(MetricCollector collector) {

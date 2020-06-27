@@ -36,7 +36,6 @@ public final class NoOpMetricCollector implements MetricCollector {
 
     @Override
     public <T> void reportMetric(SdkMetric<T> metric, T data) {
-        log.trace(() -> "Metrics reported: " + data);
     }
 
     @Override
