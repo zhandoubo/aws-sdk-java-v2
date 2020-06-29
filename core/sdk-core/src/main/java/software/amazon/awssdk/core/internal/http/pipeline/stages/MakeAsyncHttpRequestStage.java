@@ -52,6 +52,7 @@ import software.amazon.awssdk.http.async.AsyncExecuteRequest;
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
 import software.amazon.awssdk.http.async.SdkHttpContentPublisher;
 import software.amazon.awssdk.metrics.MetricCollector;
+import software.amazon.awssdk.utils.CompletableFutureUtils;
 import software.amazon.awssdk.utils.Logger;
 
 /**
@@ -185,11 +186,15 @@ public final class MakeAsyncHttpRequestStage<OutputT>
         CompletableFuture<Void> httpClientFuture = sdkAsyncHttpClient.execute(executeRequest);
 
         // Offload the metrics reporting from this stage onto the future completion executor
-        httpClientFuture.whenCompleteAsync((r, t) -> {
+        CompletableFuture<Void> result = httpClientFuture.whenComplete((r, t) -> {
             long duration = System.nanoTime() - callStart;
             metricCollector.reportMetric(CoreMetric.SERVICE_CALL_DURATION, Duration.ofNanos(duration));
-        }, futureCompletionExecutor);
-        return httpClientFuture;
+        });
+
+        // Make sure failures on the result future are forwarded to the http client future.
+        CompletableFutureUtils.forwardExceptionTo(result, httpClientFuture);
+
+        return result;
     }
 
     private boolean isFullDuplex(ExecutionAttributes executionAttributes) {
