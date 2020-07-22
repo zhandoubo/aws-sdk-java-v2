@@ -29,7 +29,7 @@ import software.amazon.awssdk.metrics.internal.DefaultSdkMetric;
  */
 @SdkPreviewApi
 @SdkPublicApi
-public interface SdkMetric<T> {
+public interface SdkMetric<T> extends Comparable<SdkMetric<?>> {
 
     /**
      * @return The name of this metric.
