@@ -30,8 +30,10 @@ import software.amazon.awssdk.benchmark.apicall.httpclient.async.NettyHttpClient
 import software.amazon.awssdk.benchmark.apicall.httpclient.async.NettyHttpClientH2Benchmark;
 import software.amazon.awssdk.benchmark.apicall.httpclient.sync.ApacheHttpClientBenchmark;
 import software.amazon.awssdk.benchmark.apicall.httpclient.sync.UrlConnectionHttpClientBenchmark;
+import software.amazon.awssdk.benchmark.apicall.protocol.CollectionComparisonBenchmark;
 import software.amazon.awssdk.benchmark.apicall.protocol.Ec2ProtocolBenchmark;
 import software.amazon.awssdk.benchmark.apicall.protocol.JsonProtocolBenchmark;
+import software.amazon.awssdk.benchmark.apicall.protocol.MetricsBenchmark;
 import software.amazon.awssdk.benchmark.apicall.protocol.QueryProtocolBenchmark;
 import software.amazon.awssdk.benchmark.apicall.protocol.XmlProtocolBenchmark;
 import software.amazon.awssdk.benchmark.coldstart.V2DefaultClientCreationBenchmark;
@@ -89,11 +91,12 @@ public class BenchmarkRunner {
 
     public static void main(String... args) throws RunnerException, JsonProcessingException {
         List<String> benchmarksToRun = new ArrayList<>();
-        benchmarksToRun.addAll(SYNC_BENCHMARKS);
-        benchmarksToRun.addAll(ASYNC_BENCHMARKS);
-        benchmarksToRun.addAll(PROTOCOL_BENCHMARKS);
-        benchmarksToRun.addAll(COLD_START_BENCHMARKS);
-        benchmarksToRun.addAll(MAPPER_BENCHMARKS);
+//        benchmarksToRun.addAll(SYNC_BENCHMARKS);
+//        benchmarksToRun.addAll(ASYNC_BENCHMARKS);
+//        benchmarksToRun.addAll(PROTOCOL_BENCHMARKS);
+//        benchmarksToRun.addAll(COLD_START_BENCHMARKS);
+//        benchmarksToRun.addAll(MAPPER_BENCHMARKS);
+        benchmarksToRun.add(MetricsBenchmark.class.getSimpleName());
 
         BenchmarkRunner runner = new BenchmarkRunner(benchmarksToRun);
 

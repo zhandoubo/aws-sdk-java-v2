@@ -156,4 +156,9 @@ public final class DefaultSdkMetric<T> extends AttributeMap.Key<T> implements Sd
     static Set<SdkMetric<?>> declaredEvents() {
         return SDK_METRICS.keySet();
     }
+
+    @Override
+    public int compareTo(SdkMetric<?> other) {
+        return name().compareTo(other.name());
+    }
 }
