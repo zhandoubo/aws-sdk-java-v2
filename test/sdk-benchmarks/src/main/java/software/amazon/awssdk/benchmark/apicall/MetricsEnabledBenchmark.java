@@ -48,7 +48,7 @@ import software.amazon.awssdk.services.protocolrestjson.model.StreamingOutputOpe
  */
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.Throughput)
-@Threads(25)
+//@Threads(25)
 public class MetricsEnabledBenchmark {
     private MockServer mockServer;
     private ProtocolRestJsonClient enabledMetricsSyncClient;
