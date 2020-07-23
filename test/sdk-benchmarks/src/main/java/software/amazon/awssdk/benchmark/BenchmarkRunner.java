@@ -30,10 +30,9 @@ import software.amazon.awssdk.benchmark.apicall.httpclient.async.NettyHttpClient
 import software.amazon.awssdk.benchmark.apicall.httpclient.async.NettyHttpClientH2Benchmark;
 import software.amazon.awssdk.benchmark.apicall.httpclient.sync.ApacheHttpClientBenchmark;
 import software.amazon.awssdk.benchmark.apicall.httpclient.sync.UrlConnectionHttpClientBenchmark;
-import software.amazon.awssdk.benchmark.apicall.protocol.CollectionComparisonBenchmark;
 import software.amazon.awssdk.benchmark.apicall.protocol.Ec2ProtocolBenchmark;
 import software.amazon.awssdk.benchmark.apicall.protocol.JsonProtocolBenchmark;
-import software.amazon.awssdk.benchmark.apicall.protocol.MetricsBenchmark;
+import software.amazon.awssdk.benchmark.apicall.MetricsBenchmark;
 import software.amazon.awssdk.benchmark.apicall.protocol.QueryProtocolBenchmark;
 import software.amazon.awssdk.benchmark.apicall.protocol.XmlProtocolBenchmark;
 import software.amazon.awssdk.benchmark.coldstart.V2DefaultClientCreationBenchmark;

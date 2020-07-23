@@ -13,7 +13,7 @@
  * permissions and limitations under the License.
  */
 
-package software.amazon.awssdk.benchmark.apicall.protocol;
+package software.amazon.awssdk.benchmark.apicall;
 
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -109,9 +109,14 @@ public class MetricsBenchmark {
     }
 
     public static void main(String... args) throws Exception {
-        Options opt = new OptionsBuilder()
-            .include(MetricsBenchmark.class.getSimpleName())
-            .build();
-        new Runner(opt).run();
+        MetricsBenchmark metricsBenchmark = new MetricsBenchmark();
+        metricsBenchmark.setup();
+        metricsBenchmark.serial_sync_h1();
+        metricsBenchmark.tearDown();
+
+//        Options opt = new OptionsBuilder()
+//            .include(MetricsBenchmark.class.getSimpleName())
+//            .build();
+//        new Runner(opt).run();
     }
 }
