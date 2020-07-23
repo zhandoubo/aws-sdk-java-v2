@@ -53,6 +53,8 @@ public class MetricsEnabledBenchmark {
     private MockServer mockServer;
     private ProtocolRestJsonClient enabledMetricsSyncClient;
     private ProtocolRestJsonAsyncClient enabledMetricsAsyncClient;
+    private ProtocolRestJsonClient disabledMetricsSyncClient;
+    private ProtocolRestJsonAsyncClient disabledMetricsAsyncClient;
 
     @Setup(Level.Trial)
     public void setup() throws Exception {
@@ -60,6 +62,8 @@ public class MetricsEnabledBenchmark {
         mockServer.start();
         enabledMetricsSyncClient = enableMetrics(syncClientBuilder()).build();
         enabledMetricsAsyncClient = enableMetrics(asyncClientBuilder()).build();
+        disabledMetricsSyncClient = syncClientBuilder().build();
+        disabledMetricsAsyncClient = asyncClientBuilder().build();
     }
 
     private <T extends SdkClientBuilder<T, ?>> T enableMetrics(T syncClientBuilder) {
@@ -83,6 +87,8 @@ public class MetricsEnabledBenchmark {
         mockServer.stop();
         enabledMetricsSyncClient.close();
         enabledMetricsAsyncClient.close();
+        disabledMetricsSyncClient.close();
+        disabledMetricsAsyncClient.close();
     }
 
     @Benchmark
@@ -113,6 +119,36 @@ public class MetricsEnabledBenchmark {
     @Benchmark
     public void metricsEnabledAsyncStreamingOutput() {
         enabledMetricsAsyncClient.streamingOutputOperation(streamingOutputRequest(), AsyncResponseTransformer.toBytes()).join();
+    }
+
+    @Benchmark
+    public void metricsDisabledSync() {
+        disabledMetricsSyncClient.allTypes();
+    }
+
+    @Benchmark
+    public void metricsDisabledAsync() {
+        disabledMetricsAsyncClient.allTypes().join();
+    }
+
+    @Benchmark
+    public void metricsDisabledSyncStreamingInput() {
+        disabledMetricsSyncClient.streamingInputOperation(streamingInputRequest(), RequestBody.fromString(""));
+    }
+
+    @Benchmark
+    public void metricsDisabledAsyncStreamingInput() {
+        disabledMetricsAsyncClient.streamingInputOperation(streamingInputRequest(), AsyncRequestBody.fromString("")).join();
+    }
+
+    @Benchmark
+    public void metricsDisabledSyncStreamingOutput() {
+        disabledMetricsSyncClient.streamingOutputOperationAsBytes(streamingOutputRequest());
+    }
+
+    @Benchmark
+    public void metricsDisabledAsyncStreamingOutput() {
+        disabledMetricsAsyncClient.streamingOutputOperation(streamingOutputRequest(), AsyncResponseTransformer.toBytes()).join();
     }
 
     private StreamingInputOperationRequest streamingInputRequest() {
