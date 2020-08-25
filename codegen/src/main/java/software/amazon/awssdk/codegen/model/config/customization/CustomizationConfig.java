@@ -165,6 +165,34 @@ public class CustomizationConfig {
      */
     private boolean enableEndpointDiscoveryMethodRequired = false;
 
+    /**
+     * Allow a customer setting an endpoint override on their client to disable endpoint discovery, even when
+     * endpointDiscoveryEnabled = true.
+     *
+     * When false:
+     * { EndpointDiscoveryRequired = True, EndpointDiscoveryEnabled = True, EndpointOverride = Set } => <b>FAILURE</b>
+     * { EndpointDiscoveryRequired = True, EndpointDiscoveryEnabled = True, EndpointOverride = null } => ENDPOINT_FROM_DISCOVERY
+     * { EndpointDiscoveryRequired = True, EndpointDiscoveryEnabled = False, EndpointOverride = Set } => FAILURE
+     * { EndpointDiscoveryRequired = True, EndpointDiscoveryEnabled = False, EndpointOverride = null } => FAILURE
+     * { EndpointDiscoveryRequired = False, EndpointDiscoveryEnabled = True, EndpointOverride = Set } => FAILURE
+     * { EndpointDiscoveryRequired = False, EndpointDiscoveryEnabled = True, EndpointOverride = null } => ENDPOINT_FROM_DISCOVERY
+     * { EndpointDiscoveryRequired = False, EndpointDiscoveryEnabled = False, EndpointOverride = Set } => ENDPOINT_FROM_OVERRIDE
+     * { EndpointDiscoveryRequired = False, EndpointDiscoveryEnabled = False, EndpointOverride = null } => ENDPOINT_FROM_REGION
+     *
+     * When true:
+     * { EndpointDiscoveryRequired = True, EndpointDiscoveryEnabled = True, EndpointOverride = Set } => <b>ENDPOINT_FROM_OVERRIDE</b>
+     * { EndpointDiscoveryRequired = True, EndpointDiscoveryEnabled = True, EndpointOverride = null } => ENDPOINT_FROM_DISCOVERY
+     * { EndpointDiscoveryRequired = True, EndpointDiscoveryEnabled = False, EndpointOverride = Set } => FAILURE
+     * { EndpointDiscoveryRequired = True, EndpointDiscoveryEnabled = False, EndpointOverride = null } => FAILURE
+     * { EndpointDiscoveryRequired = False, EndpointDiscoveryEnabled = True, EndpointOverride = Set } => NOT_SUPPORTED
+     * { EndpointDiscoveryRequired = False, EndpointDiscoveryEnabled = True, EndpointOverride = null } => NOT_SUPPORTED
+     * { EndpointDiscoveryRequired = False, EndpointDiscoveryEnabled = False, EndpointOverride = Set } => NOT_SUPPORTED
+     * { EndpointDiscoveryRequired = False, EndpointDiscoveryEnabled = False, EndpointOverride = null } => NOT_SUPPORTED
+     *
+     * Note: EndpointDiscoveryEnabled = true IFF all operations in the service have EndpointDiscoveryRequired = true
+     */
+    private boolean allowCustomEndpointToOverrideEndpointDiscovery = false;
+
     private CustomizationConfig() {
     }
 
@@ -419,5 +447,13 @@ public class CustomizationConfig {
 
     public void setEnableEndpointDiscoveryMethodRequired(boolean enableEndpointDiscoveryMethodRequired) {
         this.enableEndpointDiscoveryMethodRequired = enableEndpointDiscoveryMethodRequired;
+    }
+
+    public boolean isAllowCustomEndpointToOverrideEndpointDiscovery() {
+        return allowCustomEndpointToOverrideEndpointDiscovery;
+    }
+
+    public void setAllowCustomEndpointToOverrideEndpointDiscovery(boolean allowCustomEndpointToOverrideEndpointDiscovery) {
+        this.allowCustomEndpointToOverrideEndpointDiscovery = allowCustomEndpointToOverrideEndpointDiscovery;
     }
 }
